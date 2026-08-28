@@ -17,8 +17,11 @@ urban policy questions.
 
 <!-- CHANGE THIS: two or three sentences about yourself -->
 
-I'm a student in the MUSA program at Penn. My background is in
-[YOUR BACKGROUND], and I'm interested in [YOUR INTERESTS].
+I'm a student in the MUSA program at the University of Pennsylvania. My background is in Architecture, and I'm interested in using spatial data, visualization, and computational tools to better understand cities.
+
+Through this portfolio, I will document my work in MUSA 5080 and reflect on what I learn throughout the semester. I hope to become more comfortable with R, Quarto, GitHub, and web publishing, while building skills in data analysis and communication.
+
+I am especially interested in how data can help explain urban change, inequality, housing, transportation, and community development.
 
 ## What You'll Find Here
 
@@ -30,5 +33,5 @@ I'm a student in the MUSA program at Penn. My background is in
 
 <!-- CHANGE THIS -->
 
-- Email: your-email@upenn.edu
-- GitHub: [@your-username](https://github.com/your-username)
+- Email: chenyanz@upenn.edu
+- GitHub: [@CyannnZ](https://github.com/CyannnZ)
