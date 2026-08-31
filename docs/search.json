@@ -74,28 +74,28 @@
     "href": "about.html",
     "title": "About Me",
     "section": "",
-    "text": "Write a few paragraphs about yourself here: where you came from before MUSA, what drew you to urban spatial analytics, and what you’re hoping to do with it."
+    "text": "I’m a student in the MUSA program at the University of Pennsylvania. My background is in architecture, where I developed an interest in how the built environment shapes urban life, spatial experience, and everyday patterns of movement.\nI am interested in using analytical tools to better understand cities, communicate findings clearly, and connect design questions with evidence-based urban research."
   },
   {
     "objectID": "about.html#background",
     "href": "about.html#background",
     "title": "About Me",
     "section": "",
-    "text": "Write a few paragraphs about yourself here: where you came from before MUSA, what drew you to urban spatial analytics, and what you’re hoping to do with it."
+    "text": "I’m a student in the MUSA program at the University of Pennsylvania. My background is in architecture, where I developed an interest in how the built environment shapes urban life, spatial experience, and everyday patterns of movement.\nI am interested in using analytical tools to better understand cities, communicate findings clearly, and connect design questions with evidence-based urban research."
   },
   {
     "objectID": "about.html#skills",
     "href": "about.html#skills",
     "title": "About Me",
     "section": "Skills",
-    "text": "Skills\n\n\nLanguages & Tools: R, Quarto, Git\nSpatial: (add as you learn)\nData: US Census / ACS via tidycensus"
+    "text": "Skills\n\nLanguages & Tools: R, Quarto, Git\nSpatial: architectural analysis, spatial thinking, and introductory urban spatial analytics\nData: basic data analysis, data visualization, and US Census / ACS data via tidycensus"
   },
   {
     "objectID": "about.html#contact",
     "href": "about.html#contact",
     "title": "About Me",
     "section": "Contact",
-    "text": "Contact\n\n\nEmail: chenyanz@upenn.edu\nGitHub: @CyannnZ"
+    "text": "Contact\n\nEmail: chenyanz@upenn.edu\nGitHub: @CyannnZ"
   },
   {
     "objectID": "assignments/index.html",

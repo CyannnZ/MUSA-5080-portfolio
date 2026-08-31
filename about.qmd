@@ -4,22 +4,17 @@ title: "About Me"
 
 ## Background
 
-<!-- CHANGE THIS -->
+I'm a student in the MUSA program at the University of Pennsylvania. My background is in architecture, where I developed an interest in how the built environment shapes urban life, spatial experience, and everyday patterns of movement.
 
-Write a few paragraphs about yourself here: where you came from before MUSA,
-what drew you to urban spatial analytics, and what you're hoping to do with it.
+I am interested in using analytical tools to better understand cities, communicate findings clearly, and connect design questions with evidence-based urban research.
 
 ## Skills
 
-<!-- CHANGE THIS: update this through the semester as it becomes true -->
-
 - **Languages & Tools:** R, Quarto, Git
-- **Spatial:** (add as you learn)
-- **Data:** US Census / ACS via `tidycensus`
+- **Spatial:** architectural analysis, spatial thinking, and introductory urban spatial analytics
+- **Data:** basic data analysis, data visualization, and US Census / ACS data via `tidycensus`
 
 ## Contact
-
-<!-- CHANGE THIS -->
 
 - Email: chenyanz@upenn.edu
 - GitHub: [@CyannnZ](https://github.com/CyannnZ)
