@@ -4,14 +4,14 @@
     "href": "index.html",
     "title": "Home",
     "section": "",
-    "text": "Welcome to my portfolio for MUSA 5080: Public Policy Analytics at the University of Pennsylvania.\nThis site documents my work in the Master of Urban Spatial Analytics program — weekly notes, course assignments, and a final project applying data analysis to urban policy questions.\n\n\n\nI’m a student in the MUSA program at Penn. My background is in [YOUR BACKGROUND], and I’m interested in [YOUR INTERESTS].\n\n\n\n\nWeekly Notes — what I’m learning each week\nAssignments — analyses completed for the course\nAbout — more background and how to reach me\n\n\n\n\n\n\nEmail: your-email@upenn.edu\nGitHub: @your-username"
+    "text": "Welcome to my portfolio for MUSA 5080: Public Policy Analytics at the University of Pennsylvania.\nThis site documents my work in the Master of Urban Spatial Analytics program — weekly notes, course assignments, and a final project applying data analysis to urban policy questions.\n\n\n\nI’m a student in the MUSA program at the University of Pennsylvania. My background is in Architecture, and I’m interested in using spatial data, visualization, and computational tools to better understand cities.\nThrough this portfolio, I will document my work in MUSA 5080 and reflect on what I learn throughout the semester. I hope to become more comfortable with R, Quarto, GitHub, and web publishing, while building skills in data analysis and communication.\nI am especially interested in how data can help explain urban change, inequality, housing, transportation, and community development.\n\n\n\n\nWeekly Notes — what I’m learning each week\nAssignments — analyses completed for the course\nAbout — more background and how to reach me\n\n\n\n\n\n\nEmail: chenyanz@upenn.edu\nGitHub: @CyannnZ"
   },
   {
     "objectID": "index.html#about-me",
     "href": "index.html#about-me",
     "title": "Home",
     "section": "",
-    "text": "I’m a student in the MUSA program at Penn. My background is in [YOUR BACKGROUND], and I’m interested in [YOUR INTERESTS]."
+    "text": "I’m a student in the MUSA program at the University of Pennsylvania. My background is in Architecture, and I’m interested in using spatial data, visualization, and computational tools to better understand cities.\nThrough this portfolio, I will document my work in MUSA 5080 and reflect on what I learn throughout the semester. I hope to become more comfortable with R, Quarto, GitHub, and web publishing, while building skills in data analysis and communication.\nI am especially interested in how data can help explain urban change, inequality, housing, transportation, and community development."
   },
   {
     "objectID": "index.html#what-youll-find-here",
@@ -25,7 +25,7 @@
     "href": "index.html#get-in-touch",
     "title": "Home",
     "section": "",
-    "text": "Email: your-email@upenn.edu\nGitHub: @your-username"
+    "text": "Email: chenyanz@upenn.edu\nGitHub: @CyannnZ"
   },
   {
     "objectID": "weekly-notes/week-01.html",
