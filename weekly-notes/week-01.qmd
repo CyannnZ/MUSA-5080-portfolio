@@ -39,7 +39,7 @@ GitHub Pages  -> hosts the website for free
 The basic idea is:
 
 ```text
-`.qmd` file that I write
+.qmd file that I write
         -> Quarto renders it
         -> .html webpage
         -> GitHub Pages publishes it
