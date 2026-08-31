@@ -232,7 +232,7 @@ Commit and push are two different actions:
 
 ```text
 Commit = save a labeled snapshot on my computer
-Push    = send that snapshot to GitHub.com
+Push   = send that snapshot to GitHub.com
 ```
 
 Commit happens locally. Push sends the committed version online.
