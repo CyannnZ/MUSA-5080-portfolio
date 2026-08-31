@@ -6,11 +6,7 @@ date: 2026-08-28
 
 ## What We Did
 
-<!-- CHANGE THIS: replace with your own notes -->
-
-Set up the portfolio workflow: made a repository from a template, cloned it with
-GitHub Desktop, edited files in RStudio, rendered with Quarto, and published to
-GitHub Pages.
+Set up the portfolio workflow: made a repository from a template, cloned it with GitHub Desktop, edited files in RStudio, rendered with Quarto, and published to GitHub Pages.
 
 ## Key Concepts
 
@@ -22,10 +18,239 @@ Three places a file can live:
 
 The loop: **Edit → Save → Render → Commit → Push → wait → refresh**
 
+## Note
+
+### 1. What is a website?
+
+In class, we described a website as two things working together:
+
+```text
+a folder of .html files + a computer/server that is always online
+```
+
+For this course portfolio, those two parts are handled by Quarto and GitHub
+Pages:
+
+```text
+Quarto        -> creates the .html files
+GitHub Pages  -> hosts the website for free
+```
+
+The basic idea is:
+
+```text
+`.qmd` file that I write
+        -> Quarto renders it
+        -> .html webpage
+        -> GitHub Pages publishes it
+```
+
+This means I usually work on the source file, not the final webpage file.
+
+### 2. Quarto
+
+Quarto is the tool that turns a `.qmd` file into a webpage.
+
+The simplified relationship is:
+
+```text
+.qmd (you write) -> Quarto (machine) -> .html (webpage)
+```
+
+The action that makes this happen is **Render**:
+
+```text
+.qmd -> Render -> .html
+```
+
+### 3. What happens during Render?
+
+When I click **Render**, Quarto reads the file from top to bottom.
+
+It does roughly this:
+
+- Reads the `.qmd` file.
+- Finds code chunks.
+- Sends R code to R.
+- Gets results back from R.
+- Glues text, code, and results into HTML.
+
+This is why Render is more than saving. Save keeps changes on my computer; Render rebuilds the webpage output.
+
+### 4. Anatomy of a `.qmd` file
+
+A `.qmd` file usually has three parts:
+
+```text
+YAML header + Markdown text + R code chunks
+```
+
+#### YAML header
+
+The YAML header goes at the very top of the file and is surrounded by `---`:
+
+```yaml
+---
+title: "Week 1 Reflection"
+description: "My first weekly note"
+date: 2026-08-28
+---
+```
+
+It tells Quarto information about the page, such as the title, description, and date.
+
+Important YAML rules:
+
+- It must be at the very top of the file.
+- The opening and closing `---` lines matter.
+- Colons need a space after them.
+- Dates should use the `YYYY-MM-DD` format.
+- Quotation marks should be plain English quotation marks.
+
+#### Markdown text
+
+Markdown text is the written content of the page:
+
+```markdown
+## Reflection
+
+This week, I learned how to set up RStudio and Quarto.
+
+### Smaller Section
+
+- First point
+- Second point
+```
+
+Markdown is where I write headings, paragraphs, lists, links, and notes.
+
+#### R code chunks
+
+R code chunks are sections where R code can be run. A chunk begins with three backticks followed by `{r}`, contains R code, and ends with three backticks:
+
+<div class="sourceCode"><pre class="sourceCode markdown"><code class="sourceCode markdown">&#96;&#96;&#96;{r}
+summary(cars)
+&#96;&#96;&#96;</code></pre></div>
+
+If I want to show code but not run it, I can use the `eval: false` option:
+
+<div class="sourceCode"><pre class="sourceCode markdown"><code class="sourceCode markdown">&#96;&#96;&#96;{r}
+#| eval: false
+summary(cars)
+&#96;&#96;&#96;</code></pre></div>
+
+### 5. Source files and output files
+
+The most important file rule is to edit source files, not output files.
+
+Source files are files I write:
+
+```text
+index.qmd
+about.qmd
+weekly-notes/week-01.qmd
+assignments/*.qmd
+_quarto.yml
+```
+
+Output files are files the machine makes:
+
+```text
+docs/index.html
+docs/about.html
+docs/weekly-notes/week-01.html
+the rest of the docs/ folder
+```
+
+The rule is:
+
+```text
+Edit the source files. Do not edit or move the output files.
+```
+
+### 6. Files and folders
+
+The guiding question from the note is:
+
+```text
+Who is this file for?
+```
+
+Files for me to write:
+
+```text
+index.qmd
+about.qmd
+weekly-notes/*.qmd
+assignments/*.qmd
+```
+
+Files or folders for tools:
+
+```text
+_quarto.yml     settings for the whole website
+.Rproj          tells RStudio this folder is a project
+.gitignore      tells Git what not to track
+.Renviron       stores secrets for R, such as API keys
+docs/           website output for the internet
+_freeze/        Quarto cache or frozen output
+```
+
+### 7. Index
+
+On the web, `index.html` is the default page for a folder. If I ask for a folder URL, the server usually gives me that folder's `index.html`.
+
+Example:
+
+```text
+website folder URL -> index.html inside that folder
+```
+
+For the portfolio website:
+
+```text
+index.qmd -> Quarto render -> docs/index.html
+```
+
+That is why the homepage source file is named `index.qmd`.
+
+### 8. Git / GitHub.com / GitHub Desktop
+
+These three are related, but they mean different things:
+
+```text
+Git             version tracker
+GitHub.com      website that stores a copy of my folder
+GitHub Desktop  buttons that tell Git what to do
+```
+
+Git is mostly invisible and runs on my computer. GitHub.com stores the online copy. GitHub Desktop is the app I use to tell Git when to commit and push.
+
+### 9. Commit and push
+
+Commit and push are two different actions:
+
+```text
+Commit = save a labeled snapshot on my computer
+Push    = send that snapshot to GitHub.com
+```
+
+Commit happens locally. Push sends the committed version online.
+
+### 10. R Script
+
+An R script is different from a `.qmd` file.
+
+```text
+R script = code only
+.qmd     = writing + code + results
+```
+
+An R script is useful as a sandbox for trying code. A `.qmd` file is useful when I want to combine explanation, code, and output in a webpage or report.
+
 ## Proving R Works
 
-The chunk below runs when this page renders. If you can see a result underneath
-it on your published site, R and Quarto are talking to each other correctly.
+The chunk below runs when this page renders. If you can see a result underneath it on your published site, R and Quarto are talking to each other correctly.
 
 ```{r}
 sessionInfo()$R.version$version.string
@@ -33,13 +258,9 @@ sessionInfo()$R.version$version.string
 
 ## Reflection
 
-<!-- CHANGE THIS: 3-4 sentences -->
-
-What I want out of this course:
-
-One thing I'm nervous about:
+What I want out of this course is to become more confident using data tools to create clear, reproducible, and public-facing work. I want to get more comfortable with R, Quarto, GitHub, and web publishing, especially because these tools connect technical analysis with communication. One thing I am nervous about is remembering the full workflow from editing files to publishing the live site. I think practicing the loop repeatedly will help the process become more natural.
 
 ## Questions I Still Have
 
--
--
+- How is a Quarto website different from a hand-coded HTML, CSS, and JavaScript website?
+- When do I need to use an R code chunk in a `.qmd` file, and when is regular Markdown enough?

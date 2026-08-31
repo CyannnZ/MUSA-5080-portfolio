@@ -53,21 +53,21 @@
     "href": "weekly-notes/week-01.html#proving-r-works",
     "title": "Week 1: Getting Set Up",
     "section": "Proving R Works",
-    "text": "Proving R Works\nThe chunk below runs when this page renders. If you can see a result underneath it on your published site, R and Quarto are talking to each other correctly.\n\nsessionInfo()$R.version$version.string\n\n[1] \"R version 4.6.0 (2026-04-24)\""
+    "text": "Proving R Works\nThe chunk below runs when this page renders. If you can see a result underneath it on your published site, R and Quarto are talking to each other correctly.\n\nsessionInfo()$R.version$version.string\n\n[1] \"R version 4.6.1 (2026-06-24 ucrt)\""
   },
   {
     "objectID": "weekly-notes/week-01.html#reflection",
     "href": "weekly-notes/week-01.html#reflection",
     "title": "Week 1: Getting Set Up",
     "section": "Reflection",
-    "text": "Reflection\n\nWhat I want out of this course:\nOne thing I’m nervous about:"
+    "text": "Reflection\nWhat I want out of this course is to become more confident using data tools to create clear, reproducible, and public-facing work. I want to get more comfortable with R, Quarto, GitHub, and web publishing, especially because these tools connect technical analysis with communication. One thing I am nervous about is remembering the full workflow from editing files to publishing the live site. I think practicing the loop repeatedly will help the process become more natural."
   },
   {
     "objectID": "weekly-notes/week-01.html#questions-i-still-have",
     "href": "weekly-notes/week-01.html#questions-i-still-have",
     "title": "Week 1: Getting Set Up",
     "section": "Questions I Still Have",
-    "text": "Questions I Still Have"
+    "text": "Questions I Still Have\n\nHow is a Quarto website different from a hand-coded HTML, CSS, and JavaScript website?\nWhen do I need to use an R code chunk in a .qmd file, and when is regular Markdown enough?"
   },
   {
     "objectID": "about.html",
@@ -95,7 +95,7 @@
     "href": "about.html#contact",
     "title": "About Me",
     "section": "Contact",
-    "text": "Contact\n\n\nEmail: your-email@upenn.edu\nGitHub: @your-username"
+    "text": "Contact\n\n\nEmail: chenyanz@upenn.edu\nGitHub: @CyannnZ"
   },
   {
     "objectID": "assignments/index.html",
@@ -109,7 +109,7 @@
     "href": "weekly-notes/index.html",
     "title": "Weekly Notes",
     "section": "",
-    "text": "Notes from each week of MUSA 5080. New entries appear here automatically — add a .qmd file to this folder and render.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nWeek 1: Getting Set Up\n\n\nFirst impressions, and getting the workflow running.\n\n\n\n\n\nAug 28, 2026\n\n\n\n\n\nNo matching items"
+    "text": "Notes from each week of MUSA 5080. New entries appear here automatically — add a .qmd file to this folder and render.\n\n\n\n\n\n\n\n\n\n\n\nWeek 2:\n\n\nFirst impressions, and getting the workflow running.\n\n\n\n\n\nSep 4, 2026\n\n\n\n\n\n\n\nWeek 1: Getting Set Up\n\n\nFirst impressions, and getting the workflow running.\n\n\n\n\n\nAug 28, 2026\n\n\n\n\n\nNo matching items"
   },
   {
     "objectID": "data/readme.html",
@@ -117,5 +117,96 @@
     "title": "",
     "section": "",
     "text": "Code\n\n\n\n\nData files for MUSA 5080\nDownload assignment data from Canvas and save it here. Do not rename the files! Have a nice day :)"
+  },
+  {
+    "objectID": "weekly-notes/week-01.html#note",
+    "href": "weekly-notes/week-01.html#note",
+    "title": "Week 1: Getting Set Up",
+    "section": "Note",
+    "text": "Note\n\n1. What is a website?\nIn class, we described a website as two things working together:\na folder of .html files + a computer/server that is always online\nFor this course portfolio, those two parts are handled by Quarto and GitHub Pages:\nQuarto        -&gt; creates the .html files\nGitHub Pages  -&gt; hosts the website for free\nThe basic idea is:\n`.qmd` file that I write\n        -&gt; Quarto renders it\n        -&gt; .html webpage\n        -&gt; GitHub Pages publishes it\nThis means I usually work on the source file, not the final webpage file.\n\n\n2. Quarto\nQuarto is the tool that turns a .qmd file into a webpage.\nThe simplified relationship is:\n.qmd (you write) -&gt; Quarto (machine) -&gt; .html (webpage)\nThe action that makes this happen is Render:\n.qmd -&gt; Render -&gt; .html\n\n\n3. What happens during Render?\nWhen I click Render, Quarto reads the file from top to bottom.\nIt does roughly this:\n\nReads the .qmd file.\nFinds code chunks.\nSends R code to R.\nGets results back from R.\nGlues text, code, and results into HTML.\n\nThis is why Render is more than saving. Save keeps changes on my computer; Render rebuilds the webpage output.\n\n\n4. Anatomy of a .qmd file\nA .qmd file usually has three parts:\nYAML header + Markdown text + R code chunks\n\nYAML header\nThe YAML header goes at the very top of the file and is surrounded by ---:\n---\ntitle: \"Week 1 Reflection\"\ndescription: \"My first weekly note\"\ndate: 2026-08-28\n---\nIt tells Quarto information about the page, such as the title, description, and date.\nImportant YAML rules:\n\nIt must be at the very top of the file.\nThe opening and closing --- lines matter.\nColons need a space after them.\nDates should use the YYYY-MM-DD format.\nQuotation marks should be plain English quotation marks.\n\n\n\nMarkdown text\nMarkdown text is the written content of the page:\n## Reflection\n\nThis week, I learned how to set up RStudio and Quarto.\n\n### Smaller Section\n\n- First point\n- Second point\nMarkdown is where I write headings, paragraphs, lists, links, and notes.\n\n\nR code chunks\nR code chunks are sections where R code can be run. A chunk begins with three backticks followed by {r}, contains R code, and ends with three backticks:\n\n```{r}\nsummary(cars)\n```\n\nIf I want to show code but not run it, I can use the eval: false option:\n\n```{r}\n#| eval: false\nsummary(cars)\n```\n\n\n\n\n5. Source files and output files\nThe most important file rule is to edit source files, not output files.\nSource files are files I write:\nindex.qmd\nabout.qmd\nweekly-notes/week-01.qmd\nassignments/*.qmd\n_quarto.yml\nOutput files are files the machine makes:\ndocs/index.html\ndocs/about.html\ndocs/weekly-notes/week-01.html\nthe rest of the docs/ folder\nThe rule is:\nEdit the source files. Do not edit or move the output files.\n\n\n6. Files and folders\nThe guiding question from the note is:\nWho is this file for?\nFiles for me to write:\nindex.qmd\nabout.qmd\nweekly-notes/*.qmd\nassignments/*.qmd\nFiles or folders for tools:\n_quarto.yml     settings for the whole website\n.Rproj          tells RStudio this folder is a project\n.gitignore      tells Git what not to track\n.Renviron       stores secrets for R, such as API keys\ndocs/           website output for the internet\n_freeze/        Quarto cache or frozen output\n\n\n7. Index\nOn the web, index.html is the default page for a folder. If I ask for a folder URL, the server usually gives me that folder’s index.html.\nExample:\nwebsite folder URL -&gt; index.html inside that folder\nFor the portfolio website:\nindex.qmd -&gt; Quarto render -&gt; docs/index.html\nThat is why the homepage source file is named index.qmd.\n\n\n8. Git / GitHub.com / GitHub Desktop\nThese three are related, but they mean different things:\nGit             version tracker\nGitHub.com      website that stores a copy of my folder\nGitHub Desktop  buttons that tell Git what to do\nGit is mostly invisible and runs on my computer. GitHub.com stores the online copy. GitHub Desktop is the app I use to tell Git when to commit and push.\n\n\n9. Commit and push\nCommit and push are two different actions:\nCommit = save a labeled snapshot on my computer\nPush    = send that snapshot to GitHub.com\nCommit happens locally. Push sends the committed version online.\n\n\n10. R Script\nAn R script is different from a .qmd file.\nR script = code only\n.qmd     = writing + code + results\nAn R script is useful as a sandbox for trying code. A .qmd file is useful when I want to combine explanation, code, and output in a webpage or report."
+  },
+  {
+    "objectID": "weekly-notes/week-02.html",
+    "href": "weekly-notes/week-02.html",
+    "title": "Week 2:",
+    "section": "",
+    "text": "Set up the portfolio workflow: made a repository from a template, cloned it with GitHub Desktop, edited files in RStudio, rendered with Quarto, and published to GitHub Pages."
+  },
+  {
+    "objectID": "weekly-notes/week-02.html#what-we-did",
+    "href": "weekly-notes/week-02.html#what-we-did",
+    "title": "Week 2:",
+    "section": "",
+    "text": "Set up the portfolio workflow: made a repository from a template, cloned it with GitHub Desktop, edited files in RStudio, rendered with Quarto, and published to GitHub Pages."
+  },
+  {
+    "objectID": "weekly-notes/week-02.html#key-concepts",
+    "href": "weekly-notes/week-02.html#key-concepts",
+    "title": "Week 2:",
+    "section": "Key Concepts",
+    "text": "Key Concepts\nThree places a file can live:\n\nMy computer — where I edit\nGitHub.com — where it’s stored\nMy live site — what the world sees\n\nThe loop: Edit → Save → Render → Commit → Push → wait → refresh"
+  },
+  {
+    "objectID": "weekly-notes/week-02.html#proving-r-works",
+    "href": "weekly-notes/week-02.html#proving-r-works",
+    "title": "Week 2:",
+    "section": "Proving R Works",
+    "text": "Proving R Works\nThe chunk below runs when this page renders. If you can see a result underneath it on your published site, R and Quarto are talking to each other correctly.\n\nsessionInfo()$R.version$version.string\n\n[1] \"R version 4.6.1 (2026-06-24 ucrt)\""
+  },
+  {
+    "objectID": "weekly-notes/week-02.html#reflection",
+    "href": "weekly-notes/week-02.html#reflection",
+    "title": "Week 2:",
+    "section": "Reflection",
+    "text": "Reflection\n\nWhat I want out of this course:\nOne thing I’m nervous about:"
+  },
+  {
+    "objectID": "weekly-notes/week-02.html#questions-i-still-have",
+    "href": "weekly-notes/week-02.html#questions-i-still-have",
+    "title": "Week 2:",
+    "section": "Questions I Still Have",
+    "text": "Questions I Still Have"
+  },
+  {
+    "objectID": "docs/weekly-notes/week-02.html",
+    "href": "docs/weekly-notes/week-02.html",
+    "title": "Week 1: Getting Set Up",
+    "section": "",
+    "text": "Set up the portfolio workflow: made a repository from a template, cloned it with GitHub Desktop, edited files in RStudio, rendered with Quarto, and published to GitHub Pages."
+  },
+  {
+    "objectID": "docs/weekly-notes/week-02.html#what-we-did",
+    "href": "docs/weekly-notes/week-02.html#what-we-did",
+    "title": "Week 1: Getting Set Up",
+    "section": "",
+    "text": "Set up the portfolio workflow: made a repository from a template, cloned it with GitHub Desktop, edited files in RStudio, rendered with Quarto, and published to GitHub Pages."
+  },
+  {
+    "objectID": "docs/weekly-notes/week-02.html#key-concepts",
+    "href": "docs/weekly-notes/week-02.html#key-concepts",
+    "title": "Week 1: Getting Set Up",
+    "section": "Key Concepts",
+    "text": "Key Concepts\nThree places a file can live:\n\nMy computer — where I edit\nGitHub.com — where it’s stored\nMy live site — what the world sees\n\nThe loop: Edit → Save → Render → Commit → Push → wait → refresh"
+  },
+  {
+    "objectID": "docs/weekly-notes/week-02.html#proving-r-works",
+    "href": "docs/weekly-notes/week-02.html#proving-r-works",
+    "title": "Week 1: Getting Set Up",
+    "section": "Proving R Works",
+    "text": "Proving R Works\nThe chunk below runs when this page renders. If you can see a result underneath it on your published site, R and Quarto are talking to each other correctly.\n\nsessionInfo()$R.version$version.string\n\n[1] \"R version 4.6.1 (2026-06-24 ucrt)\""
+  },
+  {
+    "objectID": "docs/weekly-notes/week-02.html#reflection",
+    "href": "docs/weekly-notes/week-02.html#reflection",
+    "title": "Week 1: Getting Set Up",
+    "section": "Reflection",
+    "text": "Reflection\n\nWhat I want out of this course:\nOne thing I’m nervous about:"
+  },
+  {
+    "objectID": "docs/weekly-notes/week-02.html#questions-i-still-have",
+    "href": "docs/weekly-notes/week-02.html#questions-i-still-have",
+    "title": "Week 1: Getting Set Up",
+    "section": "Questions I Still Have",
+    "text": "Questions I Still Have"
   }
 ]
