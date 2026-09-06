@@ -2,7 +2,7 @@ library(tidyverse)
 library(tidycensus)
 
 #I'm going to load some data
-pa_income = get_acs(
+pa_income <- get_acs(
   geography = "county",
   variables = "B19013_001",
   state = "PA",

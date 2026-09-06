@@ -1,7 +1,7 @@
 ---
 title: "Assignment 2: Who Do We Know the Least About?"
 subtitle: "Measuring uncertainty in American Community Survey data"
-author: "YOUR NAME HERE"
+author: "Chenyan Zhao"
 date: today
 format:
   html:
