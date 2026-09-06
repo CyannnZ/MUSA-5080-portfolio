@@ -4,21 +4,28 @@
     "href": "weekly-notes/week-02.html",
     "title": "Week 2: dplyr and Census",
     "section": "",
-    "text": "Answer our previous questions.\nWe had a quiz.\nSetup Portfolio Note for today.\nA lesson for dplyr and Census\nPractice"
+    "text": "We reviewed the portfolio workflow, took a quiz, and began working with two core tools for public-policy data analysis:\n\ndplyr, an R package for transforming tables.\ntidycensus, an R package for downloading Census and American Community Survey (ACS) data.\n\nThe class connected data manipulation with an important data source: Census geography and ACS estimates."
   },
   {
     "objectID": "weekly-notes/week-02.html#what-we-did",
     "href": "weekly-notes/week-02.html#what-we-did",
     "title": "Week 2: dplyr and Census",
     "section": "",
-    "text": "Answer our previous questions.\nWe had a quiz.\nSetup Portfolio Note for today.\nA lesson for dplyr and Census\nPractice"
+    "text": "We reviewed the portfolio workflow, took a quiz, and began working with two core tools for public-policy data analysis:\n\ndplyr, an R package for transforming tables.\ntidycensus, an R package for downloading Census and American Community Survey (ACS) data.\n\nThe class connected data manipulation with an important data source: Census geography and ACS estimates."
   },
   {
     "objectID": "weekly-notes/week-02.html#key-concepts",
     "href": "weekly-notes/week-02.html#key-concepts",
     "title": "Week 2: dplyr and Census",
     "section": "Key Concepts",
-    "text": "Key Concepts\nThree places a file can live:\n\nMy computer — where I edit\nGitHub.com — where it’s stored\nMy live site — what the world sees\n\nThe loop: Edit → Save → Render → Commit → Push → wait → refresh"
+    "text": "Key Concepts\n\nAn object stores a value or a table in R.\nA function takes an input, does something, and returns an output.\nA tibble is a modern kind of data frame: observations are rows and variables are columns.\ndplyr verbs make table operations readable: filter rows, select columns, create variables, sort rows, and summarize groups.\nThe Decennial Census counts the population every ten years; the ACS is a continuous sample survey that provides estimates and uncertainty.\nA GEOID is a geographic identifier and should be stored as text so its leading zeros are preserved."
+  },
+  {
+    "objectID": "weekly-notes/week-02.html#note",
+    "href": "weekly-notes/week-02.html#note",
+    "title": "Week 2: dplyr and Census",
+    "section": "Note",
+    "text": "Note\n\n1. Where R code lives\nCode typed directly into the Console is useful for trying something out, but it disappears from the record of the project. Save reusable code in an R script, or put code and its results in a Quarto code chunk.\nConsole      -&gt; temporary experiment\n.R script    -&gt; reusable code\n.qmd file    -&gt; writing + code + rendered results\nFor example, this line creates an object named result:\nresult &lt;- filter(counties, population &gt; 50000)\nresult                  object that will hold the output\n&lt;-                      assignment operator\nfilter()                function (a dplyr verb)\ncounties                input data\npopulation &gt; 50000      condition / argument\n# comment               explanation for people; R does not run it\n&lt;- is the usual R style for assignment. = can also assign an object in many simple cases, but it is also used to name function arguments, so using &lt;- makes the intent clearer.\n\n\n2. Packages: install once, load each session\nA package is a collection of functions. Install it once on a computer, then load it again whenever a new R session needs it.\n# Run once on a computer\ninstall.packages(\"dplyr\")\ninstall.packages(\"tidycensus\")\n\n# Run at the start of each new R session\nlibrary(dplyr)\nlibrary(tidycensus)\n\n\n3. Tibbles and dplyr verbs\nA tibble is a table. Each row is one observation, and each column is one variable.\n\n\n\nname\nincome\nmoe\nmoe_pct\n\n\n\n\nAdams\n78,975\n3,334\n9\n\n\nBerks\n74,617\n1,191\n12\n\n\nBucks\n104,200\n1,502\n11\n\n\n\nThe most common dplyr verbs are:\nfilter()                    keep rows that meet a condition\nselect()                    keep or reorder columns\nmutate()                    add or change a computed column\narrange()                   reorder rows; use desc() for descending order\ngroup_by() + summarize()    turn many rows into group-level summaries\nFor example, first keep counties whose margin of error is more than 10%; then sort them from highest to lowest; then keep only the name and percentage:\nstep_1 &lt;- filter(counties, moe_pct &gt; 10)\nstep_2 &lt;- arrange(step_1, desc(moe_pct))\nstep_3 &lt;- select(step_2, name, moe_pct)\nThe resulting table is:\n\n\n\nname\nmoe_pct\n\n\n\n\nBerks\n12\n\n\nBucks\n11\n\n\n\nThe same work can be written as a pipeline. Both %&gt;% and |&gt; mean roughly “and then.”\nnew_data &lt;- counties |&gt;\n  filter(moe_pct &gt; 10) |&gt;\n  arrange(desc(moe_pct)) |&gt;\n  select(name, moe_pct)\n\n\n4. Decennial Census and the ACS\nThe two Census Bureau products answer different questions:\n\n\n\n\n\n\n\n\n\nProduct\nWhat it provides\nGeography\nImportant limitation\n\n\n\n\nDecennial Census\nA count of the full population every 10 years\nDown to Census blocks\nDoes not provide the full range of social and economic characteristics\n\n\nAmerican Community Survey (ACS)\nAnnual estimates for income, education, housing, commuting, poverty, and more\nACS 5-year data reach tracts and block groups\nResults are estimates, so they include uncertainty\n\n\n\nFor ACS data, keep two values in mind:\nEstimate (E)          the estimated value\nMargin of Error (M)   the uncertainty around that estimate\nThe ACS uses a sample rather than a complete count. Its 1-year product is the most current, but it is available only for larger areas; the lecture used a 65,000-person threshold. Its 5-year product combines five years of responses, works for nearly all geographies, and is generally the appropriate choice for Census tract or block-group analysis.\nACS 1-year  -&gt; more current; fewer and usually larger geographies\nACS 5-year  -&gt; less current; more precise for small-area analysis\nACS 3-year estimates have been discontinued. A 2016 ACS 5-year estimate, for example, pools responses collected from 2012 through 2016.\n\n\n5. Census geography and GEOIDs\nThe basic Census geographic hierarchy is:\nstate -&gt; county -&gt; Census tract -&gt; block group -&gt; Census block\nCensus tracts are useful approximations of neighborhoods, but they are not official neighborhood boundaries. They are designed to contain roughly 1,200 to 8,000 people (with an ideal size of about 4,000), and their boundaries can change over time. When comparing historical tract data, resources such as NHGIS and the Longitudinal Tract Database (LTDB) can help.\nA GEOID uniquely identifies a geographic unit. For example, the Census tract GEOID 42101000100 contains:\n\n\n\nPart\nDigits\nMeaning\n\n\n\n\n42\n2\nPennsylvania\n\n\n101\n3\nPhiladelphia County\n\n\n000100\n6\nCensus tract\n\n\n\nGEOIDs are identifiers, not quantities. Store them as character strings:\n\"01001\"  # correct: leading zero is preserved\n1001     # not appropriate for an identifier: the leading zero is lost\n\n\n6. ACS variable codes and tidycensus\nACS variables follow a structured naming system. In B19013_001E:\n\n\n\nPart\nMeaning\n\n\n\n\nB19013\ntable number\n\n\n001\nline number within the table\n\n\nE\nestimate (M means margin of error)\n\n\n\nUse load_variables() to search the available variables for a given year and survey:\nlibrary(tidycensus)\n\nvariables_2023 &lt;- load_variables(2023, \"acs5\", cache = TRUE)\nget_acs() downloads data. This example retrieves Pennsylvania county-level median household income and total population from the 2023 ACS 5-year release:\nlibrary(tidycensus)\n\ndata &lt;- get_acs(\n  geography = \"county\",\n  variables = c(\n    median_income = \"B19013_001\",\n    total_population = \"B01003_001\"\n  ),\n  state = \"PA\",\n  year = 2023,\n  survey = \"acs5\",\n  output = \"wide\"\n)\n\n\n7. Long (tidy) and wide data\nThe same information can be arranged in two useful ways:\n\n\n\n\n\n\n\n\nFormat\nOne row represents\nBest for\n\n\n\n\nLong / tidy\none geography x one variable\ncleaning, filtering, visualization, and repeated operations across variables\n\n\nWide\none geographic unit\nanalysis, modeling, and joining with other datasets\n\n\n\nFor example, long data have a variable, estimate, and moe column, so Adams County appears once per ACS variable. Wide data keep one Adams County row but use separate columns such as median_incomeE and total_populationE."
   },
   {
     "objectID": "weekly-notes/week-02.html#proving-r-works",
@@ -32,21 +39,21 @@
     "href": "weekly-notes/week-02.html#reflection",
     "title": "Week 2: dplyr and Census",
     "section": "Reflection",
-    "text": "Reflection\n\nWhat I want out of this course:\nOne thing I’m nervous about:"
+    "text": "Reflection\nThis week, I learned how R can transform tables with dplyr and how ACS data combine estimates with measures of uncertainty. I also learned that Census geography and GEOIDs matter before analysis begins."
   },
   {
     "objectID": "weekly-notes/week-02.html#questions-i-still-have",
     "href": "weekly-notes/week-02.html#questions-i-still-have",
     "title": "Week 2: dplyr and Census",
     "section": "Questions I Still Have",
-    "text": "Questions I Still Have"
+    "text": "Questions I Still Have\n\nHow should I interpret a margin of error when comparing two counties or two Census tracts?\nWhen should I use long data instead of wide data in a real analysis?"
   },
   {
     "objectID": "weekly-notes/index.html",
     "href": "weekly-notes/index.html",
     "title": "Weekly Notes",
     "section": "",
-    "text": "Notes from each week of MUSA 5080. New entries appear here automatically — add a .qmd file to this folder and render.\n\n\n\n\n\n\n\n\n\n\n\nWeek 2: dplyr and Census\n\n\ntable functions and acs data\n\n\n\n\n\nSep 4, 2026\n\n\n\n\n\n\n\nWeek 1: Getting Set Up\n\n\nFirst impressions, and getting the workflow running.\n\n\n\n\n\nAug 28, 2026\n\n\n\n\n\nNo matching items"
+    "text": "Notes from each week of MUSA 5080. New entries appear here automatically — add a .qmd file to this folder and render.\n\n\n\n\n\n\n\n\n\n\n\nWeek 2: dplyr and Census\n\n\nUsing dplyr to work with Census and ACS data.\n\n\n\n\n\nSep 4, 2026\n\n\n\n\n\n\n\nWeek 1: Getting Set Up\n\n\nFirst impressions, and getting the workflow running.\n\n\n\n\n\nAug 28, 2026\n\n\n\n\n\nNo matching items"
   },
   {
     "objectID": "data/readme.html",
@@ -54,6 +61,83 @@
     "title": "",
     "section": "",
     "text": "Code\n\n\n\n\nData files for MUSA 5080\nDownload assignment data from Canvas and save it here. Do not rename the files! Have a nice day :)"
+  },
+  {
+    "objectID": "assignments/assignment2.html",
+    "href": "assignments/assignment2.html",
+    "title": "Assignment 2: Who Do We Know the Least About?",
+    "section": "",
+    "text": "ImportantRead this first, then delete this box\n\n\n\nWhere this file goes: assignments/assignment2.qmd in your portfolio repo.\nThis is a portfolio piece. It will be published on your website where employers can see it. So:\n\nDelete every callout box like this one before your final render. They’re instructions, not content.\nReplace YOUR NAME HERE in the header above.\nWrite in complete sentences. Someone who isn’t in this class should be able to read it and follow what you did.\n\nGraded 0 / 1 / 2. A 2 means it runs, it’s complete, and the writing shows you understood what the numbers meant — not that you did something fancy.\nDue: before next class. Rendered, committed, pushed, and visible on your live site."
+  },
+  {
+    "objectID": "assignments/assignment2.html#setup",
+    "href": "assignments/assignment2.html#setup",
+    "title": "Assignment 2: Who Do We Know the Least About?",
+    "section": "Setup",
+    "text": "Setup\n\nlibrary(tidyverse)\nlibrary(tidycensus)\n\n\n\n\n\n\n\nNoteDelete this box\n\n\n\nIf this chunk fails, your Census API key isn’t set up. Check your .Renviron file, then restart R — that’s the step people forget."
+  },
+  {
+    "objectID": "assignments/assignment2.html#the-question",
+    "href": "assignments/assignment2.html#the-question",
+    "title": "Assignment 2: Who Do We Know the Least About?",
+    "section": "The question",
+    "text": "The question\nEvery number the American Community Survey publishes is an estimate drawn from a sample, not a count. That means every number comes with a margin of error — a statement about how wrong it might be.\nMost people ignore it. In this assignment, you won’t.\n\n\n\n\n\n\nTipDelete this box\n\n\n\nRewrite the paragraph below in your own words once you’ve picked your state and variable. Two or three sentences saying what you’re looking at and why.\n\n\nIn this analysis, I look at [YOUR VARIABLE] across counties in [YOUR STATE], and ask which communities we measure most and least reliably."
+  },
+  {
+    "objectID": "assignments/assignment2.html#choosing-what-to-measure",
+    "href": "assignments/assignment2.html#choosing-what-to-measure",
+    "title": "Assignment 2: Who Do We Know the Least About?",
+    "section": "Choosing what to measure",
+    "text": "Choosing what to measure\n\n\n\n\n\n\nNoteInstructions — delete this box\n\n\n\nPick a state and a variable. Anything except Pennsylvania and median household income, which we did in class.\nSome variables that work well:\n\n\n\nCode\nWhat it is\n\n\n\n\nB19013_001\nMedian household income\n\n\nB25064_001\nMedian gross rent\n\n\nB25077_001\nMedian home value\n\n\nB01002_001\nMedian age\n\n\nB08303_001\nTotal commuters (travel time table)\n\n\nB15003_022\nNumber with a bachelor’s degree\n\n\n\nWant something else? Run this in your console (not in a chunk):\nvars &lt;- load_variables(2023, \"acs5\")\nView(vars)\nThen use the search box.\n\n\n\nmy_state &lt;- \"___\"        # two-letter abbreviation, in quotes\nmy_variable &lt;- \"___\"     # the variable code, in quotes"
+  },
+  {
+    "objectID": "assignments/assignment2.html#pulling-the-data",
+    "href": "assignments/assignment2.html#pulling-the-data",
+    "title": "Assignment 2: Who Do We Know the Least About?",
+    "section": "Pulling the data",
+    "text": "Pulling the data\n\ncounty_data &lt;- get_acs(\n  geography = \"county\",\n  variables = my_variable,\n  state = my_state,\n  year = 2023,\n  survey = \"acs5\"\n)\n\nLet’s look at what came back.\n\ndim(county_data)\nhead(county_data)\n\n\n\n\n\n\n\nTipDelete this box\n\n\n\nBelow, say how many counties are in your state and confirm your row count matches. One sentence.\n\n\n[How many rows did you get? Does that match the number of counties in your state?]"
+  },
+  {
+    "objectID": "assignments/assignment2.html#how-big-is-the-margin-of-error",
+    "href": "assignments/assignment2.html#how-big-is-the-margin-of-error",
+    "title": "Assignment 2: Who Do We Know the Least About?",
+    "section": "How big is the margin of error?",
+    "text": "How big is the margin of error?\nA margin of error of 3,000 means something very different for an estimate of 20,000 than for an estimate of 200,000. To compare across places, we need it as a percentage.\n\ncounty_data &lt;- county_data %&gt;%\n  mutate(moe_pct = ___ / ___ * 100)\n\n\n\n\n\n\n\nNoteDelete this box\n\n\n\nFill in the two blanks. You want: how big is the margin of error, relative to the estimate, as a percentage?\n\n\nNow sort to see which counties are measured least reliably.\n\ncounty_data %&gt;%\n  arrange(desc(moe_pct)) %&gt;%\n  select(NAME, estimate, moe, moe_pct) %&gt;%\n  head(10)\n\n\n\n\n\n\n\nTipDelete this box\n\n\n\nWrite a sentence or two naming the least reliable county and its moe_pct.\n\n\n[Which county has the largest margin of error relative to its estimate? How large is it?]"
+  },
+  {
+    "objectID": "assignments/assignment2.html#sorting-counties-into-reliability-categories",
+    "href": "assignments/assignment2.html#sorting-counties-into-reliability-categories",
+    "title": "Assignment 2: Who Do We Know the Least About?",
+    "section": "Sorting counties into reliability categories",
+    "text": "Sorting counties into reliability categories\n\ncounty_data &lt;- county_data %&gt;%\n  mutate(reliability = case_when(\n    moe_pct &lt; 5  ~ \"High confidence\",\n    moe_pct &lt; 10 ~ \"Moderate\",\n    TRUE         ~ \"Low confidence\"\n  ))\n\ncount(county_data, reliability)\n\n\n\n\n\n\n\nNoteDelete this box\n\n\n\nThose cutoffs (5% and 10%) are a bit of a judgment call, not a law of nature. If almost every county lands in one category, adjust them so the split is informative for your variable — then say in your writing that you changed them and why. (I have a feeling for county-level, you may end up in high confidence everywhere - is smaller geographies where it really shows up. So feel free to change those numbers around a bit)\n\n\n[How many counties fall into each category?]"
+  },
+  {
+    "objectID": "assignments/assignment2.html#is-the-margin-of-error-bigger-in-small-places",
+    "href": "assignments/assignment2.html#is-the-margin-of-error-bigger-in-small-places",
+    "title": "Assignment 2: Who Do We Know the Least About?",
+    "section": "Is the margin of error bigger in small places?",
+    "text": "Is the margin of error bigger in small places?\nTo answer this we need population and our variable side by side, in the same row. That means a wide pull.\n\ncounty_wide &lt;- get_acs(\n  geography = \"county\",\n  variables = c(myvar = my_variable,\n                pop   = \"B01003_001\"),\n  state = my_state,\n  year = 2023,\n  survey = \"acs5\",\n  output = \"wide\"\n)\n\nhead(county_wide)\n\n\n\n\n\n\n\nNoteDelete this box\n\n\n\nNotice the column names: myvarE, myvarM, popE, popM. The E and M suffixes are estimate and margin of error.\n\n\n\ncounty_wide &lt;- county_wide %&gt;%\n  mutate(moe_pct = myvarM / myvarE * 100) %&gt;%\n  mutate(reliability = case_when(\n    moe_pct &lt; 5  ~ \"High confidence\",\n    moe_pct &lt; 15 ~ \"Moderate\",\n    TRUE         ~ \"Low confidence\"\n  ))\n\nNow compare the average population of counties in each reliability category.\n\ncounty_wide %&gt;%\n  group_by(___) %&gt;%\n  summarize(\n    n_counties = n(),\n    avg_population = mean(___)\n  )\n\n\n\n\n\n\n\nNoteDelete this box\n\n\n\nTwo blanks. What are you grouping by? What are you averaging?\n\n\n\n\n\n\n\n\nTipDelete this box\n\n\n\nThis table is the heart of the assignment. Describe what it shows in two or three sentences.\n\n\n[What is the average population of high-confidence counties versus low-confidence counties? Is there a pattern?]"
+  },
+  {
+    "objectID": "assignments/assignment2.html#what-this-means-for-policy",
+    "href": "assignments/assignment2.html#what-this-means-for-policy",
+    "title": "Assignment 2: Who Do We Know the Least About?",
+    "section": "What this means for policy",
+    "text": "What this means for policy\n\n\n\n\n\n\nImportantInstructions — delete this box\n\n\n\nWrite 200–250 words.\nAddress all three:\n\nWhich communities in your state do we know the least about? Name specific counties from your results.\nWhy? Connect the pattern to how the ACS actually works — it’s a sample, and smaller places yield smaller samples.\nWhat could go wrong? Imagine a state agency allocating funding using your variable, treating every county’s number as equally certain. Who is likely to be hurt, and how?\n\nUse your own numbers.\n\n\n[Your 200–250 word reflection goes here.]"
+  },
+  {
+    "objectID": "assignments/assignment2.html#optional-challenges---for-those-craving-more",
+    "href": "assignments/assignment2.html#optional-challenges---for-those-craving-more",
+    "title": "Assignment 2: Who Do We Know the Least About?",
+    "section": "Optional challenges - For those craving more",
+    "text": "Optional challenges - For those craving more\n\n\n\n\n\n\nNoteDelete this box\n\n\n\nNone of these are graded. There are no extra points. A complete, well-written assignment earns a 2 either way.\nThey’re here for anyone who finished the above and found it straightforward. Pick one (or more) that interests you.\n\nPropagate the margin of error. If you compute a derived value — a percentage, a ratio, a sum — its uncertainty depends on the uncertainty of its inputs, and you can’t just carry the original MOE along. The Census Bureau publishes formulas for this, and tidycensus implements them: moe_sum(), moe_prop(), moe_ratio(). Compute something derived, and get its margin of error right.\nParameterize the report. Add params: to the YAML so the state is an input rather than hard-coded, and the same file regenerates for any state. Render it from the terminal with quarto render assignment2.qmd -P state:NY.\nWrite a function and iterate. Wrap the data pull in a function, then use purrr::map_dfr() to run it across several states at once. Does the small-places-are-noisier pattern hold everywhere, or are some states different?\nChange the geographic scale. Run the same variable at geography = \"tract\" inside one county. Compare the margins of error to what you saw at county level. What does that imply about the resolution at which you can actually trust ACS data?\n\nIf you try one, add a short section describing what you did and what you found."
+  },
+  {
+    "objectID": "assignments/assignment2.html#before-you-submit",
+    "href": "assignments/assignment2.html#before-you-submit",
+    "title": "Assignment 2: Who Do We Know the Least About?",
+    "section": "Before you submit",
+    "text": "Before you submit\n\n\n\n\n\n\nNoteDelete this box — checklist\n\n\n\n\nYour name is in the YAML header\nEvery instruction callout is deleted\nEvery [bracketed prompt] is replaced with your own writing\nNo ___ blanks remain anywhere\nThe file is at assignments/assignment2.qmd\nSession → Restart R, then render the whole project. It works.\nCommitted and pushed\nYou opened your live site and looked at the published page"
   },
   {
     "objectID": "about.html",
@@ -88,7 +172,7 @@
     "href": "assignments/index.html",
     "title": "Assignments",
     "section": "",
-    "text": "Completed assignments for MUSA 5080. New assignments appear here automatically once you add the .qmd file to this folder and render.\n\n\n\n\n\n\n\n\n\n\nNo matching items"
+    "text": "Completed assignments for MUSA 5080. New assignments appear here automatically once you add the .qmd file to this folder and render.\n\n\n\n\n\n\n\n\n\n\n\nAssignment 2: Who Do We Know the Least About?\n\n\n\n\n\n\n\n\nSep 6, 2026\n\n\n\n\n\nNo matching items"
   },
   {
     "objectID": "index.html",

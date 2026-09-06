@@ -8,6 +8,8 @@
   },
   {
     "listing": "/assignments/index.html",
-    "items": []
+    "items": [
+      "/assignments/assignment2.html"
+    ]
   }
 ]
