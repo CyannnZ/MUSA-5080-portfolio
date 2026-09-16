@@ -1,0 +1,247 @@
+---
+title: "Week 3: Visualization and ACS Uncertainty"
+description: "Using ggplot2 and ACS margins of error to make and interpret reliable comparisons."
+date: 2026-09-11
+---
+
+## What We Did
+
+This week connected data visualization to statistical uncertainty. We used Anscombe's Quartet to see why a plot should come before a summary statistic or regression line, then used the grammar of graphics to build plots in ggplot2. We also learned how to retrieve American Community Survey (ACS) data with tidycensus, assess the reliability of ACS estimates, show uncertainty with error bars, and calculate uncertainty for derived measures and changes over time.
+
+## Key Concepts
+
+- A dataset can have similar summary statistics but very different visual patterns; plot the data before drawing conclusions.
+- In ggplot2, aesthetics map data columns to visual properties, while geoms determine how observations are drawn.
+- ACS data include an estimate and a 90% margin of error (MOE). The MOE is part of the result, not optional background information.
+- Standard error, coefficient of variation (CV), and relative MOE are related but are not the same measure.
+- When estimates are summed, converted to proportions, or compared across time, their uncertainty must be calculated as well.
+
+## Note
+
+### 1. Plot first: Anscombe's Quartet
+
+Anscombe's Quartet contains four datasets with nearly identical means, variances, correlations, and regression lines. However, their scatterplots look very different: one is roughly linear, one curves, one is driven by an outlier, and one has almost all points in a vertical line with a single influential point.
+
+The lesson is that numerical summaries are useful, but they are not enough. A regression line or correlation can conceal curvature, outliers, clusters, and unusual data structure. Before interpreting a model, make a plot.
+
+### 2. The grammar of graphics
+
+A plot maps columns in a dataset to visual properties on a page or canvas. In ggplot2, the basic structure is:
+
+~~~r
+ggplot(data = county_data, aes(x = estimate, y = population)) +
+  geom_point()
+~~~
+
+Here, <code>ggplot()</code> starts the plot, <code>aes()</code> defines the data mappings, and <code>geom_point()</code> draws one point per observation. Layers are added with <code>+</code>.
+
+| Data column | Visual property |
+|---|---|
+| <code>estimate</code> | x- or y-position |
+| <code>population</code> | x- or y-position |
+| <code>reliability</code> | color |
+| <code>moe</code> | size or an error-bar width |
+
+There is an important distinction between mapping a variable and choosing one fixed style:
+
+~~~r
+# Maps the values in reliability to colors and creates a legend
+ggplot(county_data, aes(x = estimate, y = population, color = reliability)) +
+  geom_point()
+
+# Makes every point blue; "blue" is not a data column
+ggplot(county_data, aes(x = estimate, y = population)) +
+  geom_point(color = "blue")
+~~~
+
+Putting <code>color = "blue"</code> inside <code>aes()</code> tells R that the word "blue" is a data value to map. For a fixed color, place it outside <code>aes()</code>.
+
+Common geoms include <code>geom_point()</code> for individual observations, <code>geom_col()</code> for already-calculated values, <code>geom_line()</code> for ordered time series, and <code>geom_errorbar()</code> for uncertainty intervals.
+
+### 3. Retrieving ACS data
+
+The class example retrieved 2023 ACS 5-year county-level median gross rent. The name on the left of <code>=</code> is a convenient label that we choose; the Census table code identifies the actual ACS variable.
+
+~~~r
+library(tidyverse)
+library(tidycensus)
+
+county_data <- get_acs(
+  geography = "county",
+  variables = c(rent = "B25064_001"),
+  state = "NY",
+  year = 2023,
+  survey = "acs5"
+)
+~~~
+
+<code>B25064_001</code> is the ACS table item for median gross rent. <code>get_acs()</code> returns a tidy table that includes <code>NAME</code>, <code>variable</code>, <code>estimate</code>, and <code>moe</code>. In raw Census API labels and in wide-format output, <code>E</code> denotes an estimate and <code>M</code> denotes a margin of error; for example, <code>B25064_001E</code> is the estimate field.
+
+Different examples in class used different concepts. Median rent was used for the initial retrieval and visualization example, while poverty counts and shares were used to practice derived uncertainty. They should not be treated as the same measure.
+
+### 4. Reading estimates, MOEs, and reliability
+
+An ACS estimate is a survey-based estimate, not an exact population count. The MOE supplied by the ACS is a **90% margin of error**. We can convert it to a standard error with:
+
+$$
+SE = \frac{MOE}{1.645}
+$$
+
+The value 1.645 is the standard-normal critical value for a two-sided 90% confidence interval. The coefficient of variation is a relative measure of sampling error:
+
+$$
+CV = \frac{SE}{estimate} \times 100
+$$
+
+~~~r
+county_data <- county_data %>%
+  mutate(
+    se = moe / 1.645,
+    cv = se / estimate * 100,
+    reliability = case_when(
+      cv < 15 ~ "High reliability",
+      cv < 30 ~ "Moderate reliability",
+      TRUE ~ "Lower reliability"
+    )
+  )
+~~~
+
+For this class rule of thumb, a CV below 15% indicates high reliability, 15--30% indicates moderate reliability, and above 30% indicates lower reliability or higher relative sampling error. A different source may use different cutoffs, so a chart or table should state which standard it follows.
+
+Relative MOE is another useful diagnostic:
+
+$$
+Relative\ MOE = \frac{MOE}{estimate} \times 100
+$$
+
+It is **not** the same as CV because CV first converts MOE to standard error. Relative MOE is still useful for finding estimates whose uncertainty is large compared with their magnitude.
+
+### 5. Showing uncertainty in a chart
+
+The following plot selects counties with the largest relative MOEs for median gross rent. The bar is the estimate; the error bar shows the 90% interval, estimate plus or minus MOE.
+
+~~~r
+county_data %>%
+  mutate(
+    moe_pct = moe / estimate * 100,
+    NAME = str_remove(NAME, " County, New York")
+  ) %>%
+  arrange(desc(moe_pct)) %>%
+  slice_head(n = 15) %>%
+  ggplot(aes(x = reorder(NAME, estimate), y = estimate)) +
+  geom_col(fill = "steelblue") +
+  geom_errorbar(
+    aes(ymin = estimate - moe, ymax = estimate + moe),
+    width = 0.3
+  ) +
+  coord_flip() +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    x = NULL,
+    y = "Median gross rent (dollars)",
+    title = "New York counties with the largest relative MOEs"
+  ) +
+  theme_minimal()
+~~~
+
+<code>geom_col(fill = "steelblue")</code> changes the bar color. If color should instead represent reliability, map the variable inside <code>aes()</code>, for example <code>geom_col(aes(fill = reliability))</code>.
+
+### 6. Derived uncertainty
+
+Uncertainty has to travel with a calculation. We do not add MOEs directly when we add estimates.
+
+| Task | Function | Interpretation |
+|---|---|---|
+| Add several estimates | <code>moe_sum()</code> | MOE for a total made by combining estimates |
+| Make one estimate a share of another | <code>moe_prop()</code> | MOE for a proportion when the numerator is part of the denominator |
+| Divide unrelated estimates | <code>moe_ratio()</code> | MOE for a ratio when neither quantity is a subset of the other |
+
+For example, a regional total can be calculated with <code>sum()</code>, while <code>moe_sum()</code> calculates the total's MOE:
+
+~~~r
+region_summary <- county_data %>%
+  summarise(
+    total_rent_estimate = sum(estimate),
+    total_rent_moe = moe_sum(moe, estimate)
+  )
+~~~
+
+For a poverty share, the numerator is a subset of the total population, so <code>moe_prop()</code> is appropriate. Requesting <code>output = "wide"</code> puts the estimate (<code>E</code>) and MOE (<code>M</code>) columns for each variable on the same row.
+
+~~~r
+poverty_data <- get_acs(
+  geography = "county",
+  variables = c(
+    below_poverty = "B07012_002",
+    total = "B07012_001"
+  ),
+  state = "NY",
+  year = 2023,
+  survey = "acs5",
+  output = "wide"
+) %>%
+  mutate(
+    poverty_share = below_povertyE / totalE,
+    poverty_share_moe = moe_prop(
+      below_povertyE, totalE,
+      below_povertyM, totalM
+    )
+  )
+~~~
+
+### 7. Comparing two ACS periods
+
+Overlapping confidence intervals are not a sufficient test of whether two ACS estimates differ. Instead, calculate the standard error of the difference, then construct a confidence interval for the change.
+
+For two independent estimates:
+
+$$
+SE_{difference} = \sqrt{SE_1^2 + SE_2^2}
+$$
+
+$$
+z = \frac{estimate_2 - estimate_1}{SE_{difference}}
+$$
+
+At the 90% level, the confidence interval for the change is:
+
+$$
+change \pm 1.645 \times SE_{difference}
+$$
+
+In the classroom example, median income rose from \$45,000 ± \$8,000 in 2014--2018 to \$62,000 ± \$11,000 in 2019--2023. The estimated change was \$17,000. Converting both MOEs to standard errors gives an $SE_{difference}$ of approximately \$8,268, so the 90% confidence interval for the change is approximately [\$3,399, \$30,601]. Because this interval does not include zero, the increase is statistically distinguishable from zero at the 90% confidence level.
+
+~~~r
+comparison <- comparison %>%
+  mutate(
+    change = estimate_2019_2023 - estimate_2014_2018,
+    se_1 = moe_2014_2018 / 1.645,
+    se_2 = moe_2019_2023 / 1.645,
+    se_diff = sqrt(se_1^2 + se_2^2),
+    moe_diff = se_diff * 1.645,
+    z = change / se_diff,
+    significant = abs(z) > 1.645
+  )
+~~~
+
+The interval for a change should be centered on the **difference**, not on either original estimate. If the interval includes zero, the available ACS evidence does not show a statistically distinguishable change at that confidence level.
+
+### 8. Main takeaway
+
+A strong ACS visualization does more than display a value. It makes clear what is being measured, shows uncertainty when it matters, and avoids claims that the data cannot support. Plotting, reliability checks, and derived-MOE calculations are all part of the same analytical workflow.
+
+## Proving R Works
+
+~~~{r}
+#| label: session-info
+#| echo: true
+
+sessionInfo()
+~~~
+
+## Reflection
+
+This class changed how I think about an estimate. I used to read a number from a table as the result, but ACS data require a second question: how precise is that number? The pairing of estimate and MOE makes uncertainty visible, and error bars make it much harder to overstate small differences. I also found the grammar-of-graphics framework helpful because it explains why a plot is built in layers instead of as one long command.
+
+## Questions I Still Have
+None.

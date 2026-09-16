@@ -156,16 +156,8 @@ I use the 5% and 10% thresholds established in the previous section so that each
 
 ## What this means for policy
 
-**Which communities in your state do we know the least about?**
-
 This analysis shows that New York’s smallest counties tend to have the least reliable median gross rent estimates.   Hamilton County is the clearest example: its estimated median gross rent is $860 with a margin of error of $95, or about 11.0 percent. It is the only low-confidence county under the 10 percent cutoff and has only 5,102 residents. Schuyler County has the next-highest relative margin of error at 8.7 percent, followed by Greene County at 8.0 percent.
 
-
-
-**Why?**
-
 These differences reflect how the American Community Survey works. The ACS draws estimates from a sample rather than counting every household. Smaller counties generally contain fewer sampled households, so a small number of responses can have a larger effect on their estimates. In these results, high-confidence counties average about 381,479 residents, compared with 41,178 in moderate-confidence counties and 5,102 in the low-confidence county. This pattern indicates that estimates become less precise as county population decreases.
-
-**What could go wrong?**
 
 If a state agency allocated housing assistance using median gross rent while treating every estimate as equally certain, small rural counties could be harmed. An underestimated rent could make a county appear less burdened and cause it to receive too little funding, while an overestimate could divert funds from places with greater need. Renters in Hamilton, Schuyler, and Greene Counties may therefore be especially vulnerable. Agencies should consider both the estimates and their margins of error, and they should avoid making major funding decisions based on small differences that may reflect sampling uncertainty.

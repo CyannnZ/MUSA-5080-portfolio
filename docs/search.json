@@ -1,66 +1,164 @@
 [
   {
-    "objectID": "weekly-notes/week-02.html",
-    "href": "weekly-notes/week-02.html",
-    "title": "Week 2: dplyr and Census",
+    "objectID": "weekly-notes/week-03.html",
+    "href": "weekly-notes/week-03.html",
+    "title": "Week 3: Visualization and ACS Uncertainty",
     "section": "",
-    "text": "We reviewed the portfolio workflow, took a quiz, and began working with two core tools for public-policy data analysis:\n\ndplyr, an R package for transforming tables.\ntidycensus, an R package for downloading Census and American Community Survey (ACS) data.\n\nThe class connected data manipulation with an important data source: Census geography and ACS estimates."
+    "text": "This week connected data visualization to statistical uncertainty. We used Anscombe’s Quartet to see why a plot should come before a summary statistic or regression line, then used the grammar of graphics to build plots in ggplot2. We also learned how to retrieve American Community Survey (ACS) data with tidycensus, assess the reliability of ACS estimates, show uncertainty with error bars, and calculate uncertainty for derived measures and changes over time."
   },
   {
-    "objectID": "weekly-notes/week-02.html#what-we-did",
-    "href": "weekly-notes/week-02.html#what-we-did",
-    "title": "Week 2: dplyr and Census",
+    "objectID": "weekly-notes/week-03.html#what-we-did",
+    "href": "weekly-notes/week-03.html#what-we-did",
+    "title": "Week 3: Visualization and ACS Uncertainty",
     "section": "",
-    "text": "We reviewed the portfolio workflow, took a quiz, and began working with two core tools for public-policy data analysis:\n\ndplyr, an R package for transforming tables.\ntidycensus, an R package for downloading Census and American Community Survey (ACS) data.\n\nThe class connected data manipulation with an important data source: Census geography and ACS estimates."
+    "text": "This week connected data visualization to statistical uncertainty. We used Anscombe’s Quartet to see why a plot should come before a summary statistic or regression line, then used the grammar of graphics to build plots in ggplot2. We also learned how to retrieve American Community Survey (ACS) data with tidycensus, assess the reliability of ACS estimates, show uncertainty with error bars, and calculate uncertainty for derived measures and changes over time."
   },
   {
-    "objectID": "weekly-notes/week-02.html#key-concepts",
-    "href": "weekly-notes/week-02.html#key-concepts",
-    "title": "Week 2: dplyr and Census",
+    "objectID": "weekly-notes/week-03.html#key-concepts",
+    "href": "weekly-notes/week-03.html#key-concepts",
+    "title": "Week 3: Visualization and ACS Uncertainty",
     "section": "Key Concepts",
-    "text": "Key Concepts\n\nAn object stores a value or a table in R.\nA function takes an input, does something, and returns an output.\nA tibble is a modern kind of data frame: observations are rows and variables are columns.\ndplyr verbs make table operations readable: filter rows, select columns, create variables, sort rows, and summarize groups.\nThe Decennial Census counts the population every ten years; the ACS is a continuous sample survey that provides estimates and uncertainty.\nA GEOID is a geographic identifier and should be stored as text so its leading zeros are preserved."
+    "text": "Key Concepts\n\nA dataset can have similar summary statistics but very different visual patterns; plot the data before drawing conclusions.\nIn ggplot2, aesthetics map data columns to visual properties, while geoms determine how observations are drawn.\nACS data include an estimate and a 90% margin of error (MOE). The MOE is part of the result, not optional background information.\nStandard error, coefficient of variation (CV), and relative MOE are related but are not the same measure.\nWhen estimates are summed, converted to proportions, or compared across time, their uncertainty must be calculated as well."
   },
   {
-    "objectID": "weekly-notes/week-02.html#note",
-    "href": "weekly-notes/week-02.html#note",
-    "title": "Week 2: dplyr and Census",
+    "objectID": "weekly-notes/week-03.html#note",
+    "href": "weekly-notes/week-03.html#note",
+    "title": "Week 3: Visualization and ACS Uncertainty",
     "section": "Note",
-    "text": "Note\n\n1. Where R code lives\nCode typed directly into the Console is useful for trying something out, but it disappears from the record of the project. Save reusable code in an R script, or put code and its results in a Quarto code chunk.\nConsole      -&gt; temporary experiment\n.R script    -&gt; reusable code\n.qmd file    -&gt; writing + code + rendered results\nFor example, this line creates an object named result:\nresult &lt;- filter(counties, population &gt; 50000)\nresult                  object that will hold the output\n&lt;-                      assignment operator\nfilter()                function (a dplyr verb)\ncounties                input data\npopulation &gt; 50000      condition / argument\n# comment               explanation for people; R does not run it\n&lt;- is the usual R style for assignment. = can also assign an object in many simple cases, but it is also used to name function arguments, so using &lt;- makes the intent clearer.\n\n\n2. Packages: install once, load each session\nA package is a collection of functions. Install it once on a computer, then load it again whenever a new R session needs it.\n# Run once on a computer\ninstall.packages(\"dplyr\")\ninstall.packages(\"tidycensus\")\n\n# Run at the start of each new R session\nlibrary(dplyr)\nlibrary(tidycensus)\n\n\n3. Tibbles and dplyr verbs\nA tibble is a table. Each row is one observation, and each column is one variable.\n\n\n\nname\nincome\nmoe\nmoe_pct\n\n\n\n\nAdams\n78,975\n3,334\n9\n\n\nBerks\n74,617\n1,191\n12\n\n\nBucks\n104,200\n1,502\n11\n\n\n\nThe most common dplyr verbs are:\nfilter()                    keep rows that meet a condition\nselect()                    keep or reorder columns\nmutate()                    add or change a computed column\narrange()                   reorder rows; use desc() for descending order\ngroup_by() + summarize()    turn many rows into group-level summaries\nFor example, first keep counties whose margin of error is more than 10%; then sort them from highest to lowest; then keep only the name and percentage:\nstep_1 &lt;- filter(counties, moe_pct &gt; 10)\nstep_2 &lt;- arrange(step_1, desc(moe_pct))\nstep_3 &lt;- select(step_2, name, moe_pct)\nThe resulting table is:\n\n\n\nname\nmoe_pct\n\n\n\n\nBerks\n12\n\n\nBucks\n11\n\n\n\nThe same work can be written as a pipeline. Both %&gt;% and |&gt; mean roughly “and then.”\nnew_data &lt;- counties |&gt;\n  filter(moe_pct &gt; 10) |&gt;\n  arrange(desc(moe_pct)) |&gt;\n  select(name, moe_pct)\n\n\n4. Decennial Census and the ACS\nThe two Census Bureau products answer different questions:\n\n\n\n\n\n\n\n\n\nProduct\nWhat it provides\nGeography\nImportant limitation\n\n\n\n\nDecennial Census\nA count of the full population every 10 years\nDown to Census blocks\nDoes not provide the full range of social and economic characteristics\n\n\nAmerican Community Survey (ACS)\nAnnual estimates for income, education, housing, commuting, poverty, and more\nACS 5-year data reach tracts and block groups\nResults are estimates, so they include uncertainty\n\n\n\nFor ACS data, keep two values in mind:\nEstimate (E)          the estimated value\nMargin of Error (M)   the uncertainty around that estimate\nThe ACS uses a sample rather than a complete count. Its 1-year product is the most current, but it is available only for larger areas; the lecture used a 65,000-person threshold. Its 5-year product combines five years of responses, works for nearly all geographies, and is generally the appropriate choice for Census tract or block-group analysis.\nACS 1-year  -&gt; more current; fewer and usually larger geographies\nACS 5-year  -&gt; less current; more precise for small-area analysis\nACS 3-year estimates have been discontinued. A 2016 ACS 5-year estimate, for example, pools responses collected from 2012 through 2016.\n\n\n5. Census geography and GEOIDs\nThe basic Census geographic hierarchy is:\nstate -&gt; county -&gt; Census tract -&gt; block group -&gt; Census block\nCensus tracts are useful approximations of neighborhoods, but they are not official neighborhood boundaries. They are designed to contain roughly 1,200 to 8,000 people (with an ideal size of about 4,000), and their boundaries can change over time. When comparing historical tract data, resources such as NHGIS and the Longitudinal Tract Database (LTDB) can help.\nA GEOID uniquely identifies a geographic unit. For example, the Census tract GEOID 42101000100 contains:\n\n\n\nPart\nDigits\nMeaning\n\n\n\n\n42\n2\nPennsylvania\n\n\n101\n3\nPhiladelphia County\n\n\n000100\n6\nCensus tract\n\n\n\nGEOIDs are identifiers, not quantities. Store them as character strings:\n\"01001\"  # correct: leading zero is preserved\n1001     # not appropriate for an identifier: the leading zero is lost\n\n\n6. ACS variable codes and tidycensus\nACS variables follow a structured naming system. In B19013_001E:\n\n\n\nPart\nMeaning\n\n\n\n\nB19013\ntable number\n\n\n001\nline number within the table\n\n\nE\nestimate (M means margin of error)\n\n\n\nUse load_variables() to search the available variables for a given year and survey:\nlibrary(tidycensus)\n\nvariables_2023 &lt;- load_variables(2023, \"acs5\", cache = TRUE)\nget_acs() downloads data. This example retrieves Pennsylvania county-level median household income and total population from the 2023 ACS 5-year release:\nlibrary(tidycensus)\n\ndata &lt;- get_acs(\n  geography = \"county\",\n  variables = c(\n    median_income = \"B19013_001\",\n    total_population = \"B01003_001\"\n  ),\n  state = \"PA\",\n  year = 2023,\n  survey = \"acs5\",\n  output = \"wide\"\n)\n\n\n7. Long (tidy) and wide data\nThe same information can be arranged in two useful ways:\n\n\n\n\n\n\n\n\nFormat\nOne row represents\nBest for\n\n\n\n\nLong / tidy\none geography x one variable\ncleaning, filtering, visualization, and repeated operations across variables\n\n\nWide\none geographic unit\nanalysis, modeling, and joining with other datasets\n\n\n\nFor example, long data have a variable, estimate, and moe column, so Adams County appears once per ACS variable. Wide data keep one Adams County row but use separate columns such as median_incomeE and total_populationE."
+    "text": "Note\n\n1. Plot first: Anscombe’s Quartet\nAnscombe’s Quartet contains four datasets with nearly identical means, variances, correlations, and regression lines. However, their scatterplots look very different: one is roughly linear, one curves, one is driven by an outlier, and one has almost all points in a vertical line with a single influential point.\nThe lesson is that numerical summaries are useful, but they are not enough. A regression line or correlation can conceal curvature, outliers, clusters, and unusual data structure. Before interpreting a model, make a plot.\n\n\n2. The grammar of graphics\nA plot maps columns in a dataset to visual properties on a page or canvas. In ggplot2, the basic structure is:\nggplot(data = county_data, aes(x = estimate, y = population)) +\n  geom_point()\nHere, ggplot() starts the plot, aes() defines the data mappings, and geom_point() draws one point per observation. Layers are added with +.\n\n\n\nData column\nVisual property\n\n\n\n\nestimate\nx- or y-position\n\n\npopulation\nx- or y-position\n\n\nreliability\ncolor\n\n\nmoe\nsize or an error-bar width\n\n\n\nThere is an important distinction between mapping a variable and choosing one fixed style:\n# Maps the values in reliability to colors and creates a legend\nggplot(county_data, aes(x = estimate, y = population, color = reliability)) +\n  geom_point()\n\n# Makes every point blue; \"blue\" is not a data column\nggplot(county_data, aes(x = estimate, y = population)) +\n  geom_point(color = \"blue\")\nPutting color = “blue” inside aes() tells R that the word “blue” is a data value to map. For a fixed color, place it outside aes().\nCommon geoms include geom_point() for individual observations, geom_col() for already-calculated values, geom_line() for ordered time series, and geom_errorbar() for uncertainty intervals.\n\n\n3. Retrieving ACS data\nThe class example retrieved 2023 ACS 5-year county-level median gross rent. The name on the left of = is a convenient label that we choose; the Census table code identifies the actual ACS variable.\nlibrary(tidyverse)\nlibrary(tidycensus)\n\ncounty_data &lt;- get_acs(\n  geography = \"county\",\n  variables = c(rent = \"B25064_001\"),\n  state = \"NY\",\n  year = 2023,\n  survey = \"acs5\"\n)\nB25064_001 is the ACS table item for median gross rent. get_acs() returns a tidy table that includes NAME, variable, estimate, and moe. In raw Census API labels and in wide-format output, E denotes an estimate and M denotes a margin of error; for example, B25064_001E is the estimate field.\nDifferent examples in class used different concepts. Median rent was used for the initial retrieval and visualization example, while poverty counts and shares were used to practice derived uncertainty. They should not be treated as the same measure.\n\n\n4. Reading estimates, MOEs, and reliability\nAn ACS estimate is a survey-based estimate, not an exact population count. The MOE supplied by the ACS is a 90% margin of error. We can convert it to a standard error with:\n\\[\nSE = \\frac{MOE}{1.645}\n\\]\nThe value 1.645 is the standard-normal critical value for a two-sided 90% confidence interval. The coefficient of variation is a relative measure of sampling error:\n\\[\nCV = \\frac{SE}{estimate} \\times 100\n\\]\ncounty_data &lt;- county_data %&gt;%\n  mutate(\n    se = moe / 1.645,\n    cv = se / estimate * 100,\n    reliability = case_when(\n      cv &lt; 15 ~ \"High reliability\",\n      cv &lt; 30 ~ \"Moderate reliability\",\n      TRUE ~ \"Lower reliability\"\n    )\n  )\nFor this class rule of thumb, a CV below 15% indicates high reliability, 15–30% indicates moderate reliability, and above 30% indicates lower reliability or higher relative sampling error. A different source may use different cutoffs, so a chart or table should state which standard it follows.\nRelative MOE is another useful diagnostic:\n\\[\nRelative\\ MOE = \\frac{MOE}{estimate} \\times 100\n\\]\nIt is not the same as CV because CV first converts MOE to standard error. Relative MOE is still useful for finding estimates whose uncertainty is large compared with their magnitude.\n\n\n5. Showing uncertainty in a chart\nThe following plot selects counties with the largest relative MOEs for median gross rent. The bar is the estimate; the error bar shows the 90% interval, estimate plus or minus MOE.\ncounty_data %&gt;%\n  mutate(\n    moe_pct = moe / estimate * 100,\n    NAME = str_remove(NAME, \" County, New York\")\n  ) %&gt;%\n  arrange(desc(moe_pct)) %&gt;%\n  slice_head(n = 15) %&gt;%\n  ggplot(aes(x = reorder(NAME, estimate), y = estimate)) +\n  geom_col(fill = \"steelblue\") +\n  geom_errorbar(\n    aes(ymin = estimate - moe, ymax = estimate + moe),\n    width = 0.3\n  ) +\n  coord_flip() +\n  scale_y_continuous(labels = scales::comma) +\n  labs(\n    x = NULL,\n    y = \"Median gross rent (dollars)\",\n    title = \"New York counties with the largest relative MOEs\"\n  ) +\n  theme_minimal()\ngeom_col(fill = “steelblue”) changes the bar color. If color should instead represent reliability, map the variable inside aes(), for example geom_col(aes(fill = reliability)).\n\n\n6. Derived uncertainty\nUncertainty has to travel with a calculation. We do not add MOEs directly when we add estimates.\n\n\n\n\n\n\n\n\nTask\nFunction\nInterpretation\n\n\n\n\nAdd several estimates\nmoe_sum()\nMOE for a total made by combining estimates\n\n\nMake one estimate a share of another\nmoe_prop()\nMOE for a proportion when the numerator is part of the denominator\n\n\nDivide unrelated estimates\nmoe_ratio()\nMOE for a ratio when neither quantity is a subset of the other\n\n\n\nFor example, a regional total can be calculated with sum(), while moe_sum() calculates the total’s MOE:\nregion_summary &lt;- county_data %&gt;%\n  summarise(\n    total_rent_estimate = sum(estimate),\n    total_rent_moe = moe_sum(moe, estimate)\n  )\nFor a poverty share, the numerator is a subset of the total population, so moe_prop() is appropriate. Requesting output = “wide” puts the estimate (E) and MOE (M) columns for each variable on the same row.\npoverty_data &lt;- get_acs(\n  geography = \"county\",\n  variables = c(\n    below_poverty = \"B07012_002\",\n    total = \"B07012_001\"\n  ),\n  state = \"NY\",\n  year = 2023,\n  survey = \"acs5\",\n  output = \"wide\"\n) %&gt;%\n  mutate(\n    poverty_share = below_povertyE / totalE,\n    poverty_share_moe = moe_prop(\n      below_povertyE, totalE,\n      below_povertyM, totalM\n    )\n  )\n\n\n7. Comparing two ACS periods\nOverlapping confidence intervals are not a sufficient test of whether two ACS estimates differ. Instead, calculate the standard error of the difference, then construct a confidence interval for the change.\nFor two independent estimates:\n\\[\nSE_{difference} = \\sqrt{SE_1^2 + SE_2^2}\n\\]\n\\[\nz = \\frac{estimate_2 - estimate_1}{SE_{difference}}\n\\]\nAt the 90% level, the confidence interval for the change is:\n\\[\nchange \\pm 1.645 \\times SE_{difference}\n\\]\nIn the classroom example, median income rose from $45,000 ± $8,000 in 2014–2018 to $62,000 ± $11,000 in 2019–2023. The estimated change was $17,000. Converting both MOEs to standard errors gives an \\(SE_{difference}\\) of approximately $8,268, so the 90% confidence interval for the change is approximately [$3,399, $30,601]. Because this interval does not include zero, the increase is statistically distinguishable from zero at the 90% confidence level.\ncomparison &lt;- comparison %&gt;%\n  mutate(\n    change = estimate_2019_2023 - estimate_2014_2018,\n    se_1 = moe_2014_2018 / 1.645,\n    se_2 = moe_2019_2023 / 1.645,\n    se_diff = sqrt(se_1^2 + se_2^2),\n    moe_diff = se_diff * 1.645,\n    z = change / se_diff,\n    significant = abs(z) &gt; 1.645\n  )\nThe interval for a change should be centered on the difference, not on either original estimate. If the interval includes zero, the available ACS evidence does not show a statistically distinguishable change at that confidence level.\n\n\n8. Main takeaway\nA strong ACS visualization does more than display a value. It makes clear what is being measured, shows uncertainty when it matters, and avoids claims that the data cannot support. Plotting, reliability checks, and derived-MOE calculations are all part of the same analytical workflow."
   },
   {
-    "objectID": "weekly-notes/week-02.html#proving-r-works",
-    "href": "weekly-notes/week-02.html#proving-r-works",
-    "title": "Week 2: dplyr and Census",
+    "objectID": "weekly-notes/week-03.html#proving-r-works",
+    "href": "weekly-notes/week-03.html#proving-r-works",
+    "title": "Week 3: Visualization and ACS Uncertainty",
+    "section": "Proving R Works",
+    "text": "Proving R Works\n~{r} #| label: session-info #| echo: true\nsessionInfo() ~"
+  },
+  {
+    "objectID": "weekly-notes/week-03.html#reflection",
+    "href": "weekly-notes/week-03.html#reflection",
+    "title": "Week 3: Visualization and ACS Uncertainty",
+    "section": "Reflection",
+    "text": "Reflection\nThis class changed how I think about an estimate. I used to read a number from a table as the result, but ACS data require a second question: how precise is that number? The pairing of estimate and MOE makes uncertainty visible, and error bars make it much harder to overstate small differences. I also found the grammar-of-graphics framework helpful because it explains why a plot is built in layers instead of as one long command."
+  },
+  {
+    "objectID": "weekly-notes/week-03.html#questions-i-still-have",
+    "href": "weekly-notes/week-03.html#questions-i-still-have",
+    "title": "Week 3: Visualization and ACS Uncertainty",
+    "section": "Questions I Still Have",
+    "text": "Questions I Still Have\nNone."
+  },
+  {
+    "objectID": "weekly-notes/week-01.html",
+    "href": "weekly-notes/week-01.html",
+    "title": "Week 1: Getting Set Up",
+    "section": "",
+    "text": "Set up the portfolio workflow: made a repository from a template, cloned it with GitHub Desktop, edited files in RStudio, rendered with Quarto, and published to GitHub Pages."
+  },
+  {
+    "objectID": "weekly-notes/week-01.html#what-we-did",
+    "href": "weekly-notes/week-01.html#what-we-did",
+    "title": "Week 1: Getting Set Up",
+    "section": "",
+    "text": "Set up the portfolio workflow: made a repository from a template, cloned it with GitHub Desktop, edited files in RStudio, rendered with Quarto, and published to GitHub Pages."
+  },
+  {
+    "objectID": "weekly-notes/week-01.html#key-concepts",
+    "href": "weekly-notes/week-01.html#key-concepts",
+    "title": "Week 1: Getting Set Up",
+    "section": "Key Concepts",
+    "text": "Key Concepts\nThree places a file can live:\n\nMy computer — where I edit\nGitHub.com — where it’s stored\nMy live site — what the world sees\n\nThe loop: Edit → Save → Render → Commit → Push → wait → refresh"
+  },
+  {
+    "objectID": "weekly-notes/week-01.html#note",
+    "href": "weekly-notes/week-01.html#note",
+    "title": "Week 1: Getting Set Up",
+    "section": "Note",
+    "text": "Note\n\n1. What is a website?\nIn class, we described a website as two things working together:\na folder of .html files + a computer/server that is always online\nFor this course portfolio, those two parts are handled by Quarto and GitHub Pages:\nQuarto        -&gt; creates the .html files\nGitHub Pages  -&gt; hosts the website for free\nThe basic idea is:\n.qmd file that I write\n        -&gt; Quarto renders it\n        -&gt; .html webpage\n        -&gt; GitHub Pages publishes it\nThis means I usually work on the source file, not the final webpage file.\n\n\n2. Quarto\nQuarto is the tool that turns a .qmd file into a webpage.\nThe simplified relationship is:\n.qmd (you write) -&gt; Quarto (machine) -&gt; .html (webpage)\nThe action that makes this happen is Render:\n.qmd -&gt; Render -&gt; .html\n\n\n3. What happens during Render?\nWhen I click Render, Quarto reads the file from top to bottom.\nIt does roughly this:\n\nReads the .qmd file.\nFinds code chunks.\nSends R code to R.\nGets results back from R.\nGlues text, code, and results into HTML.\n\nThis is why Render is more than saving. Save keeps changes on my computer; Render rebuilds the webpage output.\n\n\n4. Anatomy of a .qmd file\nA .qmd file usually has three parts:\nYAML header + Markdown text + R code chunks\n\nYAML header\nThe YAML header goes at the very top of the file and is surrounded by ---:\n---\ntitle: \"Week 1 Reflection\"\ndescription: \"My first weekly note\"\ndate: 2026-08-28\n---\nIt tells Quarto information about the page, such as the title, description, and date.\nImportant YAML rules:\n\nIt must be at the very top of the file.\nThe opening and closing --- lines matter.\nColons need a space after them.\nDates should use the YYYY-MM-DD format.\nQuotation marks should be plain English quotation marks.\n\n\n\nMarkdown text\nMarkdown text is the written content of the page:\n## Reflection\n\nThis week, I learned how to set up RStudio and Quarto.\n\n### Smaller Section\n\n- First point\n- Second point\nMarkdown is where I write headings, paragraphs, lists, links, and notes.\n\n\nR code chunks\nR code chunks are sections where R code can be run. A chunk begins with three backticks followed by {r}, contains R code, and ends with three backticks:\n\n```{r}\nsummary(cars)\n```\n\nIf I want to show code but not run it, I can use the eval: false option:\n\n```{r}\n#| eval: false\nsummary(cars)\n```\n\n\n\n\n5. Source files and output files\nThe most important file rule is to edit source files, not output files.\nSource files are files I write:\nindex.qmd\nabout.qmd\nweekly-notes/week-01.qmd\nassignments/*.qmd\n_quarto.yml\nOutput files are files the machine makes:\ndocs/index.html\ndocs/about.html\ndocs/weekly-notes/week-01.html\nthe rest of the docs/ folder\nThe rule is:\nEdit the source files. Do not edit or move the output files.\n\n\n6. Files and folders\nThe guiding question from the note is:\nWho is this file for?\nFiles for me to write:\nindex.qmd\nabout.qmd\nweekly-notes/*.qmd\nassignments/*.qmd\nFiles or folders for tools:\n_quarto.yml     settings for the whole website\n.Rproj          tells RStudio this folder is a project\n.gitignore      tells Git what not to track\n.Renviron       stores secrets for R, such as API keys\ndocs/           website output for the internet\n_freeze/        Quarto cache or frozen output\n\n\n7. Index\nOn the web, index.html is the default page for a folder. If I ask for a folder URL, the server usually gives me that folder’s index.html.\nExample:\nwebsite folder URL -&gt; index.html inside that folder\nFor the portfolio website:\nindex.qmd -&gt; Quarto render -&gt; docs/index.html\nThat is why the homepage source file is named index.qmd.\n\n\n8. Git / GitHub.com / GitHub Desktop\nThese three are related, but they mean different things:\nGit             version tracker\nGitHub.com      website that stores a copy of my folder\nGitHub Desktop  buttons that tell Git what to do\nGit is mostly invisible and runs on my computer. GitHub.com stores the online copy. GitHub Desktop is the app I use to tell Git when to commit and push.\n\n\n9. Commit and push\nCommit and push are two different actions:\nCommit = save a labeled snapshot on my computer\nPush   = send that snapshot to GitHub.com\nCommit happens locally. Push sends the committed version online.\n\n\n10. R Script\nAn R script is different from a .qmd file.\nR script = code only\n.qmd     = writing + code + results\nAn R script is useful as a sandbox for trying code. A .qmd file is useful when I want to combine explanation, code, and output in a webpage or report."
+  },
+  {
+    "objectID": "weekly-notes/week-01.html#proving-r-works",
+    "href": "weekly-notes/week-01.html#proving-r-works",
+    "title": "Week 1: Getting Set Up",
     "section": "Proving R Works",
     "text": "Proving R Works\nThe chunk below runs when this page renders. If you can see a result underneath it on your published site, R and Quarto are talking to each other correctly.\n\nsessionInfo()$R.version$version.string\n\n[1] \"R version 4.6.1 (2026-06-24 ucrt)\""
   },
   {
-    "objectID": "weekly-notes/week-02.html#reflection",
-    "href": "weekly-notes/week-02.html#reflection",
-    "title": "Week 2: dplyr and Census",
+    "objectID": "weekly-notes/week-01.html#reflection",
+    "href": "weekly-notes/week-01.html#reflection",
+    "title": "Week 1: Getting Set Up",
     "section": "Reflection",
-    "text": "Reflection\nThis week, I learned how R can transform tables with dplyr and how ACS data combine estimates with measures of uncertainty. I also learned that Census geography and GEOIDs matter before analysis begins."
+    "text": "Reflection\nWhat I want out of this course is to become more confident using data tools to create clear, reproducible, and public-facing work. I want to get more comfortable with R, Quarto, GitHub, and web publishing, especially because these tools connect technical analysis with communication. One thing I am nervous about is remembering the full workflow from editing files to publishing the live site. I think practicing the loop repeatedly will help the process become more natural."
   },
   {
-    "objectID": "weekly-notes/week-02.html#questions-i-still-have",
-    "href": "weekly-notes/week-02.html#questions-i-still-have",
-    "title": "Week 2: dplyr and Census",
+    "objectID": "weekly-notes/week-01.html#questions-i-still-have",
+    "href": "weekly-notes/week-01.html#questions-i-still-have",
+    "title": "Week 1: Getting Set Up",
     "section": "Questions I Still Have",
-    "text": "Questions I Still Have\n\nHow should I interpret a margin of error when comparing two counties or two Census tracts?\nWhen should I use long data instead of wide data in a real analysis?"
+    "text": "Questions I Still Have\n\nHow is a Quarto website different from a hand-coded HTML, CSS, and JavaScript website?\nWhen do I need to use an R code chunk in a .qmd file, and when is regular Markdown enough?"
   },
   {
-    "objectID": "weekly-notes/index.html",
-    "href": "weekly-notes/index.html",
-    "title": "Weekly Notes",
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Home",
     "section": "",
-    "text": "Notes from each week of MUSA 5080. New entries appear here automatically — add a .qmd file to this folder and render.\n\n\n\n\n\n\n\n\n\n\n\nWeek 2: dplyr and Census\n\n\nUsing dplyr to work with Census and ACS data.\n\n\n\n\n\nSep 4, 2026\n\n\n\n\n\n\n\nWeek 1: Getting Set Up\n\n\nFirst impressions, and getting the workflow running.\n\n\n\n\n\nAug 28, 2026\n\n\n\n\n\nNo matching items"
+    "text": "Welcome to my portfolio for MUSA 5080: Public Policy Analytics at the University of Pennsylvania.\nThis site documents my work in the Master of Urban Spatial Analytics program — weekly notes, course assignments, and a final project applying data analysis to urban policy questions.\n\n\n\nI’m a student in the MUSA program at the University of Pennsylvania. My background is in Architecture, and I’m interested in using spatial data, visualization, and computational tools to better understand cities.\nThrough this portfolio, I will document my work in MUSA 5080 and reflect on what I learn throughout the semester. I hope to become more comfortable with R, Quarto, GitHub, and web publishing, while building skills in data analysis and communication.\nI am especially interested in how data can help explain urban change, inequality, housing, transportation, and community development.\n\n\n\n\nWeekly Notes — what I’m learning each week\nAssignments — analyses completed for the course\nAbout — more background and how to reach me\n\n\n\n\n\n\nEmail: chenyanz@upenn.edu\nGitHub: @CyannnZ"
   },
   {
-    "objectID": "data/readme.html",
-    "href": "data/readme.html",
-    "title": "",
+    "objectID": "index.html#about-me",
+    "href": "index.html#about-me",
+    "title": "Home",
     "section": "",
-    "text": "Code\n\n\n\n\nData files for MUSA 5080\nDownload assignment data from Canvas and save it here. Do not rename the files! Have a nice day :)"
+    "text": "I’m a student in the MUSA program at the University of Pennsylvania. My background is in Architecture, and I’m interested in using spatial data, visualization, and computational tools to better understand cities.\nThrough this portfolio, I will document my work in MUSA 5080 and reflect on what I learn throughout the semester. I hope to become more comfortable with R, Quarto, GitHub, and web publishing, while building skills in data analysis and communication.\nI am especially interested in how data can help explain urban change, inequality, housing, transportation, and community development."
+  },
+  {
+    "objectID": "index.html#what-youll-find-here",
+    "href": "index.html#what-youll-find-here",
+    "title": "Home",
+    "section": "",
+    "text": "Weekly Notes — what I’m learning each week\nAssignments — analyses completed for the course\nAbout — more background and how to reach me"
+  },
+  {
+    "objectID": "index.html#get-in-touch",
+    "href": "index.html#get-in-touch",
+    "title": "Home",
+    "section": "",
+    "text": "Email: chenyanz@upenn.edu\nGitHub: @CyannnZ"
+  },
+  {
+    "objectID": "assignments/index.html",
+    "href": "assignments/index.html",
+    "title": "Assignments",
+    "section": "",
+    "text": "Completed assignments for MUSA 5080. New assignments appear here automatically once you add the .qmd file to this folder and render.\n\n\n\n\n\n\n\n\n\n\n\nAssignment 2: Who Do We Know the Least About?\n\n\n\n\n\n\n\n\nSep 7, 2026\n\n\n\n\n\nNo matching items"
+  },
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "About Me",
+    "section": "",
+    "text": "I’m a student in the MUSA program at the University of Pennsylvania. My background is in architecture, where I developed an interest in how the built environment shapes urban life, spatial experience, and everyday patterns of movement.\nI am interested in using analytical tools to better understand cities, communicate findings clearly, and connect design questions with evidence-based urban research."
+  },
+  {
+    "objectID": "about.html#background",
+    "href": "about.html#background",
+    "title": "About Me",
+    "section": "",
+    "text": "I’m a student in the MUSA program at the University of Pennsylvania. My background is in architecture, where I developed an interest in how the built environment shapes urban life, spatial experience, and everyday patterns of movement.\nI am interested in using analytical tools to better understand cities, communicate findings clearly, and connect design questions with evidence-based urban research."
+  },
+  {
+    "objectID": "about.html#skills",
+    "href": "about.html#skills",
+    "title": "About Me",
+    "section": "Skills",
+    "text": "Skills\n\nLanguages & Tools: R, Quarto, Git\nSpatial: architectural analysis, spatial thinking, and introductory urban spatial analytics\nData: basic data analysis, data visualization, and US Census / ACS data via tidycensus"
+  },
+  {
+    "objectID": "about.html#contact",
+    "href": "about.html#contact",
+    "title": "About Me",
+    "section": "Contact",
+    "text": "Contact\n\nEmail: chenyanz@upenn.edu\nGitHub: @CyannnZ"
   },
   {
     "objectID": "assignments/assignment2.html",
@@ -123,132 +221,69 @@
     "href": "assignments/assignment2.html#what-this-means-for-policy",
     "title": "Assignment 2: Who Do We Know the Least About?",
     "section": "What this means for policy",
-    "text": "What this means for policy\nWhich communities in your state do we know the least about?\nThis analysis shows that New York’s smallest counties tend to have the least reliable median gross rent estimates. Hamilton County is the clearest example: its estimated median gross rent is $860 with a margin of error of $95, or about 11.0 percent. It is the only low-confidence county under the 10 percent cutoff and has only 5,102 residents. Schuyler County has the next-highest relative margin of error at 8.7 percent, followed by Greene County at 8.0 percent.\nWhy?\nThese differences reflect how the American Community Survey works. The ACS draws estimates from a sample rather than counting every household. Smaller counties generally contain fewer sampled households, so a small number of responses can have a larger effect on their estimates. In these results, high-confidence counties average about 381,479 residents, compared with 41,178 in moderate-confidence counties and 5,102 in the low-confidence county. This pattern indicates that estimates become less precise as county population decreases.\nWhat could go wrong?\nIf a state agency allocated housing assistance using median gross rent while treating every estimate as equally certain, small rural counties could be harmed. An underestimated rent could make a county appear less burdened and cause it to receive too little funding, while an overestimate could divert funds from places with greater need. Renters in Hamilton, Schuyler, and Greene Counties may therefore be especially vulnerable. Agencies should consider both the estimates and their margins of error, and they should avoid making major funding decisions based on small differences that may reflect sampling uncertainty."
+    "text": "What this means for policy\nThis analysis shows that New York’s smallest counties tend to have the least reliable median gross rent estimates. Hamilton County is the clearest example: its estimated median gross rent is $860 with a margin of error of $95, or about 11.0 percent. It is the only low-confidence county under the 10 percent cutoff and has only 5,102 residents. Schuyler County has the next-highest relative margin of error at 8.7 percent, followed by Greene County at 8.0 percent.\nThese differences reflect how the American Community Survey works. The ACS draws estimates from a sample rather than counting every household. Smaller counties generally contain fewer sampled households, so a small number of responses can have a larger effect on their estimates. In these results, high-confidence counties average about 381,479 residents, compared with 41,178 in moderate-confidence counties and 5,102 in the low-confidence county. This pattern indicates that estimates become less precise as county population decreases.\nIf a state agency allocated housing assistance using median gross rent while treating every estimate as equally certain, small rural counties could be harmed. An underestimated rent could make a county appear less burdened and cause it to receive too little funding, while an overestimate could divert funds from places with greater need. Renters in Hamilton, Schuyler, and Greene Counties may therefore be especially vulnerable. Agencies should consider both the estimates and their margins of error, and they should avoid making major funding decisions based on small differences that may reflect sampling uncertainty."
   },
   {
-    "objectID": "assignments/assignment2.html#optional-challenges---for-those-craving-more",
-    "href": "assignments/assignment2.html#optional-challenges---for-those-craving-more",
-    "title": "Assignment 2: Who Do We Know the Least About?",
-    "section": "Optional challenges - For those craving more",
-    "text": "Optional challenges - For those craving more\n\n\n\n\n\n\nNoteDelete this box\n\n\n\nNone of these are graded. There are no extra points. A complete, well-written assignment earns a 2 either way.\nThey’re here for anyone who finished the above and found it straightforward. Pick one (or more) that interests you.\n\nPropagate the margin of error. If you compute a derived value — a percentage, a ratio, a sum — its uncertainty depends on the uncertainty of its inputs, and you can’t just carry the original MOE along. The Census Bureau publishes formulas for this, and tidycensus implements them: moe_sum(), moe_prop(), moe_ratio(). Compute something derived, and get its margin of error right.\nParameterize the report. Add params: to the YAML so the state is an input rather than hard-coded, and the same file regenerates for any state. Render it from the terminal with quarto render assignment2.qmd -P state:NY.\nWrite a function and iterate. Wrap the data pull in a function, then use purrr::map_dfr() to run it across several states at once. Does the small-places-are-noisier pattern hold everywhere, or are some states different?\nChange the geographic scale. Run the same variable at geography = \"tract\" inside one county. Compare the margins of error to what you saw at county level. What does that imply about the resolution at which you can actually trust ACS data?\n\nIf you try one, add a short section describing what you did and what you found."
-  },
-  {
-    "objectID": "assignments/assignment2.html#before-you-submit",
-    "href": "assignments/assignment2.html#before-you-submit",
-    "title": "Assignment 2: Who Do We Know the Least About?",
-    "section": "Before you submit",
-    "text": "Before you submit\n\n\n\n\n\n\nNoteDelete this box — checklist\n\n\n\n\nYour name is in the YAML header\nEvery instruction callout is deleted\nEvery [bracketed prompt] is replaced with your own writing\nNo ___ blanks remain anywhere\nThe file is at assignments/assignment2.qmd\nSession → Restart R, then render the whole project. It works.\nCommitted and pushed\nYou opened your live site and looked at the published page"
-  },
-  {
-    "objectID": "about.html",
-    "href": "about.html",
-    "title": "About Me",
+    "objectID": "data/readme.html",
+    "href": "data/readme.html",
+    "title": "",
     "section": "",
-    "text": "I’m a student in the MUSA program at the University of Pennsylvania. My background is in architecture, where I developed an interest in how the built environment shapes urban life, spatial experience, and everyday patterns of movement.\nI am interested in using analytical tools to better understand cities, communicate findings clearly, and connect design questions with evidence-based urban research."
+    "text": "Code\n\n\n\n\nData files for MUSA 5080\nDownload assignment data from Canvas and save it here. Do not rename the files! Have a nice day :)"
   },
   {
-    "objectID": "about.html#background",
-    "href": "about.html#background",
-    "title": "About Me",
+    "objectID": "weekly-notes/index.html",
+    "href": "weekly-notes/index.html",
+    "title": "Weekly Notes",
     "section": "",
-    "text": "I’m a student in the MUSA program at the University of Pennsylvania. My background is in architecture, where I developed an interest in how the built environment shapes urban life, spatial experience, and everyday patterns of movement.\nI am interested in using analytical tools to better understand cities, communicate findings clearly, and connect design questions with evidence-based urban research."
+    "text": "Notes from each week of MUSA 5080. New entries appear here automatically — add a .qmd file to this folder and render.\n\n\n\n\n\n\n\n\n\n\n\nWeek 3: Visualization and ACS Uncertainty\n\n\nUsing ggplot2 and ACS margins of error to make and interpret reliable comparisons.\n\n\n\n\n\nSep 11, 2026\n\n\n\n\n\n\n\nWeek 2: dplyr and Census\n\n\nUsing dplyr to work with Census and ACS data.\n\n\n\n\n\nSep 4, 2026\n\n\n\n\n\n\n\nWeek 1: Getting Set Up\n\n\nFirst impressions, and getting the workflow running.\n\n\n\n\n\nAug 28, 2026\n\n\n\n\n\nNo matching items"
   },
   {
-    "objectID": "about.html#skills",
-    "href": "about.html#skills",
-    "title": "About Me",
-    "section": "Skills",
-    "text": "Skills\n\nLanguages & Tools: R, Quarto, Git\nSpatial: architectural analysis, spatial thinking, and introductory urban spatial analytics\nData: basic data analysis, data visualization, and US Census / ACS data via tidycensus"
-  },
-  {
-    "objectID": "about.html#contact",
-    "href": "about.html#contact",
-    "title": "About Me",
-    "section": "Contact",
-    "text": "Contact\n\nEmail: chenyanz@upenn.edu\nGitHub: @CyannnZ"
-  },
-  {
-    "objectID": "assignments/index.html",
-    "href": "assignments/index.html",
-    "title": "Assignments",
+    "objectID": "weekly-notes/week-02.html",
+    "href": "weekly-notes/week-02.html",
+    "title": "Week 2: dplyr and Census",
     "section": "",
-    "text": "Completed assignments for MUSA 5080. New assignments appear here automatically once you add the .qmd file to this folder and render.\n\n\n\n\n\n\n\n\n\n\n\nAssignment 2: Who Do We Know the Least About?\n\n\n\n\n\n\n\n\nSep 7, 2026\n\n\n\n\n\nNo matching items"
+    "text": "We reviewed the portfolio workflow, took a quiz, and began working with two core tools for public-policy data analysis:\n\ndplyr, an R package for transforming tables.\ntidycensus, an R package for downloading Census and American Community Survey (ACS) data.\n\nThe class connected data manipulation with an important data source: Census geography and ACS estimates."
   },
   {
-    "objectID": "index.html",
-    "href": "index.html",
-    "title": "Home",
+    "objectID": "weekly-notes/week-02.html#what-we-did",
+    "href": "weekly-notes/week-02.html#what-we-did",
+    "title": "Week 2: dplyr and Census",
     "section": "",
-    "text": "Welcome to my portfolio for MUSA 5080: Public Policy Analytics at the University of Pennsylvania.\nThis site documents my work in the Master of Urban Spatial Analytics program — weekly notes, course assignments, and a final project applying data analysis to urban policy questions.\n\n\n\nI’m a student in the MUSA program at the University of Pennsylvania. My background is in Architecture, and I’m interested in using spatial data, visualization, and computational tools to better understand cities.\nThrough this portfolio, I will document my work in MUSA 5080 and reflect on what I learn throughout the semester. I hope to become more comfortable with R, Quarto, GitHub, and web publishing, while building skills in data analysis and communication.\nI am especially interested in how data can help explain urban change, inequality, housing, transportation, and community development.\n\n\n\n\nWeekly Notes — what I’m learning each week\nAssignments — analyses completed for the course\nAbout — more background and how to reach me\n\n\n\n\n\n\nEmail: chenyanz@upenn.edu\nGitHub: @CyannnZ"
+    "text": "We reviewed the portfolio workflow, took a quiz, and began working with two core tools for public-policy data analysis:\n\ndplyr, an R package for transforming tables.\ntidycensus, an R package for downloading Census and American Community Survey (ACS) data.\n\nThe class connected data manipulation with an important data source: Census geography and ACS estimates."
   },
   {
-    "objectID": "index.html#about-me",
-    "href": "index.html#about-me",
-    "title": "Home",
-    "section": "",
-    "text": "I’m a student in the MUSA program at the University of Pennsylvania. My background is in Architecture, and I’m interested in using spatial data, visualization, and computational tools to better understand cities.\nThrough this portfolio, I will document my work in MUSA 5080 and reflect on what I learn throughout the semester. I hope to become more comfortable with R, Quarto, GitHub, and web publishing, while building skills in data analysis and communication.\nI am especially interested in how data can help explain urban change, inequality, housing, transportation, and community development."
-  },
-  {
-    "objectID": "index.html#what-youll-find-here",
-    "href": "index.html#what-youll-find-here",
-    "title": "Home",
-    "section": "",
-    "text": "Weekly Notes — what I’m learning each week\nAssignments — analyses completed for the course\nAbout — more background and how to reach me"
-  },
-  {
-    "objectID": "index.html#get-in-touch",
-    "href": "index.html#get-in-touch",
-    "title": "Home",
-    "section": "",
-    "text": "Email: chenyanz@upenn.edu\nGitHub: @CyannnZ"
-  },
-  {
-    "objectID": "weekly-notes/week-01.html",
-    "href": "weekly-notes/week-01.html",
-    "title": "Week 1: Getting Set Up",
-    "section": "",
-    "text": "Set up the portfolio workflow: made a repository from a template, cloned it with GitHub Desktop, edited files in RStudio, rendered with Quarto, and published to GitHub Pages."
-  },
-  {
-    "objectID": "weekly-notes/week-01.html#what-we-did",
-    "href": "weekly-notes/week-01.html#what-we-did",
-    "title": "Week 1: Getting Set Up",
-    "section": "",
-    "text": "Set up the portfolio workflow: made a repository from a template, cloned it with GitHub Desktop, edited files in RStudio, rendered with Quarto, and published to GitHub Pages."
-  },
-  {
-    "objectID": "weekly-notes/week-01.html#key-concepts",
-    "href": "weekly-notes/week-01.html#key-concepts",
-    "title": "Week 1: Getting Set Up",
+    "objectID": "weekly-notes/week-02.html#key-concepts",
+    "href": "weekly-notes/week-02.html#key-concepts",
+    "title": "Week 2: dplyr and Census",
     "section": "Key Concepts",
-    "text": "Key Concepts\nThree places a file can live:\n\nMy computer — where I edit\nGitHub.com — where it’s stored\nMy live site — what the world sees\n\nThe loop: Edit → Save → Render → Commit → Push → wait → refresh"
+    "text": "Key Concepts\n\nAn object stores a value or a table in R.\nA function takes an input, does something, and returns an output.\nA tibble is a modern kind of data frame: observations are rows and variables are columns.\ndplyr verbs make table operations readable: filter rows, select columns, create variables, sort rows, and summarize groups.\nThe Decennial Census counts the population every ten years; the ACS is a continuous sample survey that provides estimates and uncertainty.\nA GEOID is a geographic identifier and should be stored as text so its leading zeros are preserved."
   },
   {
-    "objectID": "weekly-notes/week-01.html#note",
-    "href": "weekly-notes/week-01.html#note",
-    "title": "Week 1: Getting Set Up",
+    "objectID": "weekly-notes/week-02.html#note",
+    "href": "weekly-notes/week-02.html#note",
+    "title": "Week 2: dplyr and Census",
     "section": "Note",
-    "text": "Note\n\n1. What is a website?\nIn class, we described a website as two things working together:\na folder of .html files + a computer/server that is always online\nFor this course portfolio, those two parts are handled by Quarto and GitHub Pages:\nQuarto        -&gt; creates the .html files\nGitHub Pages  -&gt; hosts the website for free\nThe basic idea is:\n.qmd file that I write\n        -&gt; Quarto renders it\n        -&gt; .html webpage\n        -&gt; GitHub Pages publishes it\nThis means I usually work on the source file, not the final webpage file.\n\n\n2. Quarto\nQuarto is the tool that turns a .qmd file into a webpage.\nThe simplified relationship is:\n.qmd (you write) -&gt; Quarto (machine) -&gt; .html (webpage)\nThe action that makes this happen is Render:\n.qmd -&gt; Render -&gt; .html\n\n\n3. What happens during Render?\nWhen I click Render, Quarto reads the file from top to bottom.\nIt does roughly this:\n\nReads the .qmd file.\nFinds code chunks.\nSends R code to R.\nGets results back from R.\nGlues text, code, and results into HTML.\n\nThis is why Render is more than saving. Save keeps changes on my computer; Render rebuilds the webpage output.\n\n\n4. Anatomy of a .qmd file\nA .qmd file usually has three parts:\nYAML header + Markdown text + R code chunks\n\nYAML header\nThe YAML header goes at the very top of the file and is surrounded by ---:\n---\ntitle: \"Week 1 Reflection\"\ndescription: \"My first weekly note\"\ndate: 2026-08-28\n---\nIt tells Quarto information about the page, such as the title, description, and date.\nImportant YAML rules:\n\nIt must be at the very top of the file.\nThe opening and closing --- lines matter.\nColons need a space after them.\nDates should use the YYYY-MM-DD format.\nQuotation marks should be plain English quotation marks.\n\n\n\nMarkdown text\nMarkdown text is the written content of the page:\n## Reflection\n\nThis week, I learned how to set up RStudio and Quarto.\n\n### Smaller Section\n\n- First point\n- Second point\nMarkdown is where I write headings, paragraphs, lists, links, and notes.\n\n\nR code chunks\nR code chunks are sections where R code can be run. A chunk begins with three backticks followed by {r}, contains R code, and ends with three backticks:\n\n```{r}\nsummary(cars)\n```\n\nIf I want to show code but not run it, I can use the eval: false option:\n\n```{r}\n#| eval: false\nsummary(cars)\n```\n\n\n\n\n5. Source files and output files\nThe most important file rule is to edit source files, not output files.\nSource files are files I write:\nindex.qmd\nabout.qmd\nweekly-notes/week-01.qmd\nassignments/*.qmd\n_quarto.yml\nOutput files are files the machine makes:\ndocs/index.html\ndocs/about.html\ndocs/weekly-notes/week-01.html\nthe rest of the docs/ folder\nThe rule is:\nEdit the source files. Do not edit or move the output files.\n\n\n6. Files and folders\nThe guiding question from the note is:\nWho is this file for?\nFiles for me to write:\nindex.qmd\nabout.qmd\nweekly-notes/*.qmd\nassignments/*.qmd\nFiles or folders for tools:\n_quarto.yml     settings for the whole website\n.Rproj          tells RStudio this folder is a project\n.gitignore      tells Git what not to track\n.Renviron       stores secrets for R, such as API keys\ndocs/           website output for the internet\n_freeze/        Quarto cache or frozen output\n\n\n7. Index\nOn the web, index.html is the default page for a folder. If I ask for a folder URL, the server usually gives me that folder’s index.html.\nExample:\nwebsite folder URL -&gt; index.html inside that folder\nFor the portfolio website:\nindex.qmd -&gt; Quarto render -&gt; docs/index.html\nThat is why the homepage source file is named index.qmd.\n\n\n8. Git / GitHub.com / GitHub Desktop\nThese three are related, but they mean different things:\nGit             version tracker\nGitHub.com      website that stores a copy of my folder\nGitHub Desktop  buttons that tell Git what to do\nGit is mostly invisible and runs on my computer. GitHub.com stores the online copy. GitHub Desktop is the app I use to tell Git when to commit and push.\n\n\n9. Commit and push\nCommit and push are two different actions:\nCommit = save a labeled snapshot on my computer\nPush   = send that snapshot to GitHub.com\nCommit happens locally. Push sends the committed version online.\n\n\n10. R Script\nAn R script is different from a .qmd file.\nR script = code only\n.qmd     = writing + code + results\nAn R script is useful as a sandbox for trying code. A .qmd file is useful when I want to combine explanation, code, and output in a webpage or report."
+    "text": "Note\n\n1. Where R code lives\nCode typed directly into the Console is useful for trying something out, but it disappears from the record of the project. Save reusable code in an R script, or put code and its results in a Quarto code chunk.\nConsole      -&gt; temporary experiment\n.R script    -&gt; reusable code\n.qmd file    -&gt; writing + code + rendered results\nFor example, this line creates an object named result:\nresult &lt;- filter(counties, population &gt; 50000)\nresult                  object that will hold the output\n&lt;-                      assignment operator\nfilter()                function (a dplyr verb)\ncounties                input data\npopulation &gt; 50000      condition / argument\n# comment               explanation for people; R does not run it\n&lt;- is the usual R style for assignment. = can also assign an object in many simple cases, but it is also used to name function arguments, so using &lt;- makes the intent clearer.\n\n\n2. Packages: install once, load each session\nA package is a collection of functions. Install it once on a computer, then load it again whenever a new R session needs it.\n# Run once on a computer\ninstall.packages(\"dplyr\")\ninstall.packages(\"tidycensus\")\n\n# Run at the start of each new R session\nlibrary(dplyr)\nlibrary(tidycensus)\n\n\n3. Tibbles and dplyr verbs\nA tibble is a table. Each row is one observation, and each column is one variable.\n\n\n\nname\nincome\nmoe\nmoe_pct\n\n\n\n\nAdams\n78,975\n3,334\n9\n\n\nBerks\n74,617\n1,191\n12\n\n\nBucks\n104,200\n1,502\n11\n\n\n\nThe most common dplyr verbs are:\nfilter()                    keep rows that meet a condition\nselect()                    keep or reorder columns\nmutate()                    add or change a computed column\narrange()                   reorder rows; use desc() for descending order\ngroup_by() + summarize()    turn many rows into group-level summaries\nFor example, first keep counties whose margin of error is more than 10%; then sort them from highest to lowest; then keep only the name and percentage:\nstep_1 &lt;- filter(counties, moe_pct &gt; 10)\nstep_2 &lt;- arrange(step_1, desc(moe_pct))\nstep_3 &lt;- select(step_2, name, moe_pct)\nThe resulting table is:\n\n\n\nname\nmoe_pct\n\n\n\n\nBerks\n12\n\n\nBucks\n11\n\n\n\nThe same work can be written as a pipeline. Both %&gt;% and |&gt; mean roughly “and then.”\nnew_data &lt;- counties |&gt;\n  filter(moe_pct &gt; 10) |&gt;\n  arrange(desc(moe_pct)) |&gt;\n  select(name, moe_pct)\n\n\n4. Decennial Census and the ACS\nThe two Census Bureau products answer different questions:\n\n\n\n\n\n\n\n\n\nProduct\nWhat it provides\nGeography\nImportant limitation\n\n\n\n\nDecennial Census\nA count of the full population every 10 years\nDown to Census blocks\nDoes not provide the full range of social and economic characteristics\n\n\nAmerican Community Survey (ACS)\nAnnual estimates for income, education, housing, commuting, poverty, and more\nACS 5-year data reach tracts and block groups\nResults are estimates, so they include uncertainty\n\n\n\nFor ACS data, keep two values in mind:\nEstimate (E)          the estimated value\nMargin of Error (M)   the uncertainty around that estimate\nThe ACS uses a sample rather than a complete count. Its 1-year product is the most current, but it is available only for larger areas; the lecture used a 65,000-person threshold. Its 5-year product combines five years of responses, works for nearly all geographies, and is generally the appropriate choice for Census tract or block-group analysis.\nACS 1-year  -&gt; more current; fewer and usually larger geographies\nACS 5-year  -&gt; less current; more precise for small-area analysis\nACS 3-year estimates have been discontinued. A 2016 ACS 5-year estimate, for example, pools responses collected from 2012 through 2016.\n\n\n5. Census geography and GEOIDs\nThe basic Census geographic hierarchy is:\nstate -&gt; county -&gt; Census tract -&gt; block group -&gt; Census block\nCensus tracts are useful approximations of neighborhoods, but they are not official neighborhood boundaries. They are designed to contain roughly 1,200 to 8,000 people (with an ideal size of about 4,000), and their boundaries can change over time. When comparing historical tract data, resources such as NHGIS and the Longitudinal Tract Database (LTDB) can help.\nA GEOID uniquely identifies a geographic unit. For example, the Census tract GEOID 42101000100 contains:\n\n\n\nPart\nDigits\nMeaning\n\n\n\n\n42\n2\nPennsylvania\n\n\n101\n3\nPhiladelphia County\n\n\n000100\n6\nCensus tract\n\n\n\nGEOIDs are identifiers, not quantities. Store them as character strings:\n\"01001\"  # correct: leading zero is preserved\n1001     # not appropriate for an identifier: the leading zero is lost\n\n\n6. ACS variable codes and tidycensus\nACS variables follow a structured naming system. In B19013_001E:\n\n\n\nPart\nMeaning\n\n\n\n\nB19013\ntable number\n\n\n001\nline number within the table\n\n\nE\nestimate (M means margin of error)\n\n\n\nUse load_variables() to search the available variables for a given year and survey:\nlibrary(tidycensus)\n\nvariables_2023 &lt;- load_variables(2023, \"acs5\", cache = TRUE)\nget_acs() downloads data. This example retrieves Pennsylvania county-level median household income and total population from the 2023 ACS 5-year release:\nlibrary(tidycensus)\n\ndata &lt;- get_acs(\n  geography = \"county\",\n  variables = c(\n    median_income = \"B19013_001\",\n    total_population = \"B01003_001\"\n  ),\n  state = \"PA\",\n  year = 2023,\n  survey = \"acs5\",\n  output = \"wide\"\n)\n\n\n7. Long (tidy) and wide data\nThe same information can be arranged in two useful ways:\n\n\n\n\n\n\n\n\nFormat\nOne row represents\nBest for\n\n\n\n\nLong / tidy\none geography x one variable\ncleaning, filtering, visualization, and repeated operations across variables\n\n\nWide\none geographic unit\nanalysis, modeling, and joining with other datasets\n\n\n\nFor example, long data have a variable, estimate, and moe column, so Adams County appears once per ACS variable. Wide data keep one Adams County row but use separate columns such as median_incomeE and total_populationE."
   },
   {
-    "objectID": "weekly-notes/week-01.html#proving-r-works",
-    "href": "weekly-notes/week-01.html#proving-r-works",
-    "title": "Week 1: Getting Set Up",
+    "objectID": "weekly-notes/week-02.html#proving-r-works",
+    "href": "weekly-notes/week-02.html#proving-r-works",
+    "title": "Week 2: dplyr and Census",
     "section": "Proving R Works",
     "text": "Proving R Works\nThe chunk below runs when this page renders. If you can see a result underneath it on your published site, R and Quarto are talking to each other correctly.\n\nsessionInfo()$R.version$version.string\n\n[1] \"R version 4.6.1 (2026-06-24 ucrt)\""
   },
   {
-    "objectID": "weekly-notes/week-01.html#reflection",
-    "href": "weekly-notes/week-01.html#reflection",
-    "title": "Week 1: Getting Set Up",
+    "objectID": "weekly-notes/week-02.html#reflection",
+    "href": "weekly-notes/week-02.html#reflection",
+    "title": "Week 2: dplyr and Census",
     "section": "Reflection",
-    "text": "Reflection\nWhat I want out of this course is to become more confident using data tools to create clear, reproducible, and public-facing work. I want to get more comfortable with R, Quarto, GitHub, and web publishing, especially because these tools connect technical analysis with communication. One thing I am nervous about is remembering the full workflow from editing files to publishing the live site. I think practicing the loop repeatedly will help the process become more natural."
+    "text": "Reflection\nThis week, I learned how R can transform tables with dplyr and how ACS data combine estimates with measures of uncertainty. I also learned that Census geography and GEOIDs matter before analysis begins."
   },
   {
-    "objectID": "weekly-notes/week-01.html#questions-i-still-have",
-    "href": "weekly-notes/week-01.html#questions-i-still-have",
-    "title": "Week 1: Getting Set Up",
+    "objectID": "weekly-notes/week-02.html#questions-i-still-have",
+    "href": "weekly-notes/week-02.html#questions-i-still-have",
+    "title": "Week 2: dplyr and Census",
     "section": "Questions I Still Have",
-    "text": "Questions I Still Have\n\nHow is a Quarto website different from a hand-coded HTML, CSS, and JavaScript website?\nWhen do I need to use an R code chunk in a .qmd file, and when is regular Markdown enough?"
+    "text": "Questions I Still Have\n\nHow should I interpret a margin of error when comparing two counties or two Census tracts?\nWhen should I use long data instead of wide data in a real analysis?"
   }
 ]
