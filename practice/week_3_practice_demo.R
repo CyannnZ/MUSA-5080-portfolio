@@ -3,8 +3,8 @@ library(tidycensus)
 
 county_data <- get_acs(
   geography = "county",
-  variables = "B25064_001",
-  state = "NY",
+  variables = my_variable,
+  state = my_state,
   year = 2023,
   survey = "acs5"
 )
@@ -122,7 +122,7 @@ region <- county_data %>%
                      "Essex County, New York",
                      "Greene County, New York"))
 
-region_total     <- sum(region$estimate)
+region_total    <- sum(region$estimate)
 region_total_moe <- moe_sum(region$moe, region$estimate)
 
 region_total      # 9,510
