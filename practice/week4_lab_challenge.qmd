@@ -212,8 +212,8 @@ That error is sf protecting you. Fix it by **translating** both layers into Penn
 
 ```{r}
 #| label: transform
-philly_tracts <- philly_tracts %>% ___(crs = 2272)
-stations      <- stations %>% ___(crs = 2272)
+philly_tracts <- philly_tracts %>% st_transform(crs = 2272)
+stations      <- stations %>% st_transform(crs = 2272)
 
 st_crs(philly_tracts)$units   # what units are we in now?
 ```
@@ -244,7 +244,7 @@ Now go the other way and count stations **per tract**. The first route is the We
 #| label: count-route1
 station_counts <- stations_with_tract %>%
   st_drop_geometry() %>%
-  ___(GEOID)
+  count(GEOID, name = "n_stations")
 ```
 
 The second route counts directly:
@@ -284,14 +284,14 @@ Instead, find the nearest station for each tract, then measure only that one dis
 
 ```{r}
 #| label: nearest
-nearest_idx <- st_nearest_feature(centroids, ___)
+nearest_idx <- st_nearest_feature(centroids, stations)
 
 philly_tracts <- philly_tracts %>%
   mutate(
     dist_ft = as.numeric(
-      st_distance(centroids, stations[nearest_idx, ], by_element = ___)
+      st_distance(centroids, stations[nearest_idx, ], by_element = TRUE)
     ),
-    dist_mi = dist_ft / ___
+    dist_mi = dist_ft / 5280
   )
 
 summary(philly_tracts$dist_mi)
@@ -306,7 +306,7 @@ Build a **half-mile** zone around every station and merge the circles into one s
 ```{r}
 #| label: buffer
 station_zone <- stations %>%
-  st_buffer(dist = ___) %>%
+  st_buffer(dist = 2640) %>%
   st_union()
 ```
 
@@ -315,7 +315,7 @@ station_zone <- stations %>%
 ```{r}
 #| label: filter-disjoint
 outside_zone <- philly_tracts %>%
-  st_filter(station_zone, .predicate = ___)
+  st_filter(station_zone, .predicate = st_disjoint)
 
 nrow(outside_zone)
 ```
@@ -362,11 +362,72 @@ You now have three different definitions of "has access":
 
 ```{r}
 #| label: challenge
-# Your team's code here
+# 1. Define low-income
+inc_q25 <- quantile(
+  philly_tracts$med_incE,
+  0.25,
+  na.rm = TRUE
+)
 
+philly_tracts <- philly_tracts %>%
+  mutate(
+    low_income = med_incE < inc_q25
+  )
 
+target <- philly_tracts %>%
+  filter(
+    low_income,
+    dist_mi > 0.5
+  )
+
+# count
+nrow(target)
+```
+```{r}
+
+#reliability
+
+target %>%
+  st_drop_geometry() %>%
+  count(reliability)
 
 ```
+```{r}
+# map
+
+ggplot() +
+  geom_sf(
+    data = philly_tracts,
+    fill = "grey92",
+    color = "white",
+    linewidth = 0.05
+  ) +
+  geom_sf(
+    data = target,
+    aes(fill = reliability),
+    color = "white",
+    linewidth = 0.05
+  ) +
+  geom_sf(
+    data = stations,
+    color = "grey30",
+    size = 0.4
+  ) +
+  scale_fill_brewer(
+    palette = "YlOrRd"
+  ) +
+  theme_void() +
+  labs(
+    title = "Low-income tracts more than a half mile from an Indego station",
+    subtitle = "Low income = bottom quartile of tract median income",
+    fill = "Income estimate reliability"
+  )
+
+```
+
+### Result
+
+I define low-income tracts as those in the bottom quartile of median household income. I define access using centroid distance because it provides a simple and consistent measure across tracts. If I used any-overlap or area coverage instead, the number of tracts without access could change because large tracts may touch the service zone even when most of their area is far from a station.
 
 ### Scoring (for bragging rights, not grades)
 
