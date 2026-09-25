@@ -1,0 +1,364 @@
+---
+title: "Week 4: Working with Spatial Data in R"
+description: "Working with table joins, sf objects, coordinate reference systems, projections, spatial relationships, and maps in R."
+date: 2026-09-18
+---
+
+## What We Did
+
+This week introduced the foundations of working with spatial data in R. We covered joining Census tables by GEOID, working with `sf` objects and their geometry columns, interpreting coordinate reference systems (CRS) and map projections, using spatial predicates and joins, measuring distance, filtering and modifying geometries, and mapping with `geom_sf()`.
+
+## Key Concepts
+
+- Table joins require a shared key that represents the same geography in both tables.
+- An `sf` object is a data frame with a geometry column that stores spatial shape and location.
+- A CRS tells us what coordinate values mean; geometry and CRS must be interpreted together.
+- `st_set_crs()` labels coordinates, while `st_transform()` converts coordinates.
+- Spatial joins use location rather than a shared ID, and `geom_sf()` draws the geometry column automatically.
+
+## Note
+
+### 1. Table joins
+
+Two tables can be joined when they share the same key, usually GEOID.
+
+~~~r
+left_join(income_23, income_15, by = "GEOID")
+~~~
+
+Example:
+
+| `income_23` |  | `income_15` |  |
+|---|---:|---|---:|
+| GEOID | med_inc_23 | GEOID | med_inc_15 |
+| 100 | 82000 | 100 | 61000 |
+| 200 | 31500 | 200 | 27000 |
+| 300 | 45000 | 400 | 39000 |
+
+After a left join:
+
+| GEOID | med_inc_23 | med_inc_15 |
+|---|---:|---:|
+| 100 | 82000 | 61000 |
+| 200 | 31500 | 27000 |
+| 300 | 45000 | NA |
+
+`left_join()`: keep all rows from the left table.
+
+`inner_join()`: keep only matches in both tables.
+
+`full_join()`: keep everything from both tables.
+
+Important: the join key must represent the same thing in both tables. Same column name does not necessarily mean the same geography. Check geographic level, vintage, and GEOID formatting before joining.
+
+Census tract boundaries and GEOIDs can change over time, so two years may have different row counts. Always check before comparing years.
+
+### 2. Spatial data and sf
+
+`sf` = Simple Features.
+
+An `sf` object is a normal data frame with one additional column:
+
+| GEOID | med_inc_23 | med_inc_15 | geometry |
+|---|---:|---:|---|
+| 100 | 82000 | 61000 | POLYGON(...) |
+| 200 | 31500 | 27000 | POLYGON(...) |
+| 300 | 45000 | NA | POLYGON(...) |
+
+The geometry column stores the spatial shape and location.
+
+Common formats:
+
+- `.shp`
+- `.gdb`
+
+When using `get_acs()`:
+
+~~~r
+get_acs(..., geometry = TRUE)
+~~~
+
+returns ACS attributes together with geometry.
+
+Geometry is "sticky." In an `sf` object, the geometry column usually stays attached even after `select()`.
+
+If geometry is no longer needed:
+
+~~~r
+st_drop_geometry()
+~~~
+
+### 3. Coordinate Reference Systems (CRS)
+
+A CRS tells us what spatial coordinates mean.
+
+Geographic vs. Projected:
+
+| Type | Coordinates | Typical units |
+|---|---|---|
+| Geographic CRS | longitude / latitude | degrees |
+| Projected CRS | x / y | meters or feet |
+
+Examples from class:
+
+| EPSG | CRS | Units |
+|---:|---|---|
+| 4326 | WGS 84 | degrees |
+| 4269 | NAD83 | degrees |
+| 5070 | Albers Equal Area | meters |
+| 2272 | Pennsylvania South State Plane | US feet |
+
+Geometry gives the coordinates; CRS tells us how to interpret them.
+
+#### Datum
+
+An ellipsoid is the mathematical model used to approximate Earth's shape; a datum connects and anchors that model to the real Earth.
+
+> Ellipsoid = mathematical model of Earth's shape  
+> Datum = reference framework that positions that model on Earth
+
+Class example:
+
+~~~text
+Clarke 1866 + Meades Ranch, Kansas
+            ↓
+           NAD27
+            ↓
+           NAD83
+            ↓
+           WGS84
+~~~
+
+NAD83 and WGS84 are Earth-centered reference systems; WGS84 is widely used by GPS.
+
+### 4. Map projections
+
+The Earth is curved, but maps are flat, so projection always introduces distortion.
+
+The four properties discussed in class are:
+
+- Shape
+- Area
+- Distance
+- Direction
+
+A projection cannot preserve all four perfectly everywhere.
+
+#### Projection families
+
+- Cylindrical
+- Transverse Cylindrical
+- Conic
+
+The line where a projection surface touches the Earth is the line of tangency; distortion is minimized there.
+
+What can be preserved?
+
+- Conformal: preserves local shape / angles
+- Equal-area: preserves area
+- Equidistant: preserves specified distances
+
+Example:
+
+~~~text
+Lambert Conformal Conic
+        ↑          ↑
+   preserved     projection
+    property       family
+~~~
+
+### 5. UTM
+
+UTM = Universal Transverse Mercator.
+
+The Earth is divided into 60 zones, each about 6° of longitude wide.
+
+$$
+360° / 6° = 60\ \text{zones}
+$$
+
+Each zone uses a Transverse Mercator projection.
+
+Coordinates are Easting (x) and Northing (y), and are measured in meters.
+
+The central meridian uses a false easting of 500,000 m, helping avoid negative Easting values.
+
+### 6. `st_set_crs()` vs. `st_transform()`
+
+These are not the same.
+
+#### `st_set_crs()`
+
+~~~r
+st_set_crs(x, 2272)
+~~~
+
+Adds or corrects the CRS label. The coordinate numbers do not change.
+
+Use it only when the existing coordinates are already in that CRS but the metadata are missing or wrong.
+
+#### `st_transform()`
+
+~~~r
+st_transform(x, 2272)
+~~~
+
+Actually converts the coordinates into a new CRS.
+
+Memory aid: `set_crs` = label; `transform` = convert.
+
+### 7. Spatial relationships
+
+Suppose:
+
+- A and B share a boundary.
+- C lies completely inside A.
+
+#### `st_intersects()`
+
+Asks whether two geometries share any point.
+
+| Relationship | Result |
+|---|---|
+| A-B | TRUE |
+| A-C | TRUE |
+| A-A | TRUE |
+
+#### `st_touches()`
+
+Asks whether geometries touch only along their boundaries, without interior overlap.
+
+| Relationship | Result |
+|---|---|
+| A-B | TRUE |
+| A-C | FALSE |
+| A-A | FALSE |
+
+#### `st_within()`
+
+Asks whether one geometry is inside another.
+
+~~~r
+st_within(C, A) = TRUE
+st_within(A, C) = FALSE
+~~~
+
+`within` is directional.
+
+### 8. Spatial join: `st_join()`
+
+~~~r
+st_join(stations, tracts)
+~~~
+
+This is a join by location, not by a shared ID.
+
+For each station point, R finds the tract containing it and attaches tract attributes such as median income.
+
+Conceptually:
+
+~~~text
+station point
+     ↓ where is it?
+tract polygon
+     ↓
+station + tract attributes
+~~~
+
+Compare:
+
+- `left_join()` → join by WHAT / shared key
+- `st_join()` → join by WHERE / spatial relationship
+
+If one feature in `x` matches multiple features in `y`, `st_join()` can create multiple output rows. Always check the row count after a spatial join.
+
+### 9. Distance
+
+~~~r
+st_distance(stations, tracts)
+~~~
+
+`st_distance()` normally returns a matrix.
+
+If there are 5 stations and 5 tracts, the output contains all station-tract distance combinations.
+
+Before measuring distance, use an appropriate projected CRS and check the units.
+
+### 10. Filtering and changing geometry
+
+How many tracts are near (for example, within 1/2 mile of) a station? A buffer can create the "near" area around stations.
+
+#### `st_filter()`
+
+~~~r
+st_filter(tracts, service_area)
+~~~
+
+Keeps the original tract shapes that satisfy the spatial relationship. Use it when the goal is to select / count features.
+
+#### `st_intersection()`
+
+~~~r
+st_intersection(tracts, service_area)
+~~~
+
+Returns only the overlapping pieces. The shapes change. Use it when the goal is to measure the actual common area.
+
+#### `st_union()`
+
+~~~r
+st_union(service_areas)
+~~~
+
+Combines multiple geometries into one overall geometry.
+
+- `st_buffer()` → create a distance zone / new polygon
+- `st_filter()` → keep whole features
+- `st_intersection()` → keep only common areas
+- `st_union()` → combine geometries
+
+### 11. Mapping with `geom_sf()`
+
+~~~r
+ggplot(philly_tracts) +
+  geom_sf(aes(fill = med_incE), color = NA) +
+  scale_fill_viridis_c(labels = scales::dollar) +
+  theme_void()
+~~~
+
+`geom_sf()` draws the geometry column automatically.
+
+- `geometry` → where / what shape
+- `med_incE` → fill color
+
+If you see:
+
+~~~text
+stat_sf() requires the following missing aesthetics: geometry
+~~~
+
+the object is probably not an `sf` object or no longer has geometry.
+
+Check:
+
+~~~r
+class(philly_tracts)
+names(philly_tracts)
+~~~
+
+## Proving R Works
+
+~~~{r}
+#| label: session-info
+#| echo: true
+
+sessionInfo()
+~~~
+
+## Reflection
+
+This week clarified that spatial data are not just tables with an extra column. The geometry and CRS together determine how locations, distance, area, and spatial relationships should be interpreted. I also found the distinction between a table join and a spatial join useful: one matches by a shared key, while the other matches by location.
+
+## Questions I Still Have
+
+None.

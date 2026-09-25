@@ -235,7 +235,7 @@
     "href": "weekly-notes/index.html",
     "title": "Weekly Notes",
     "section": "",
-    "text": "Notes from each week of MUSA 5080. New entries appear here automatically — add a .qmd file to this folder and render.\n\n\n\n\n\n\n\n\n\n\n\nWeek 3: Visualization and ACS Uncertainty\n\n\nUsing ggplot2 and ACS margins of error to make and interpret reliable comparisons.\n\n\n\n\n\nSep 11, 2026\n\n\n\n\n\n\n\nWeek 2: dplyr and Census\n\n\nUsing dplyr to work with Census and ACS data.\n\n\n\n\n\nSep 4, 2026\n\n\n\n\n\n\n\nWeek 1: Getting Set Up\n\n\nFirst impressions, and getting the workflow running.\n\n\n\n\n\nAug 28, 2026\n\n\n\n\n\nNo matching items"
+    "text": "Notes from each week of MUSA 5080. New entries appear here automatically — add a .qmd file to this folder and render.\n\n\n\n\n\n\n\n\n\n\n\nWeek 4: Working with Spatial Data in R\n\n\nWorking with table joins, sf objects, coordinate reference systems, projections, spatial relationships, and maps in R.\n\n\n\n\n\nSep 18, 2026\n\n\n\n\n\n\n\nWeek 3: Visualization and ACS Uncertainty\n\n\nUsing ggplot2 and ACS margins of error to make and interpret reliable comparisons.\n\n\n\n\n\nSep 11, 2026\n\n\n\n\n\n\n\nWeek 2: dplyr and Census\n\n\nUsing dplyr to work with Census and ACS data.\n\n\n\n\n\nSep 4, 2026\n\n\n\n\n\n\n\nWeek 1: Getting Set Up\n\n\nFirst impressions, and getting the workflow running.\n\n\n\n\n\nAug 28, 2026\n\n\n\n\n\nNo matching items"
   },
   {
     "objectID": "weekly-notes/week-02.html",
@@ -320,5 +320,54 @@
     "title": "Assignment3: Verify the Claim: Poverty Change in Philadelphia",
     "section": "Part 4 — Rewrite",
     "text": "Part 4 — Rewrite\nNew American Community Survey data show that poverty changed unevenly across Philadelphia between 2006–10 and 2013–17. Among 376 census tracts with comparable estimates, 36 had a clear increase in poverty and 27 had a clear decrease. In the remaining 313 tracts, the estimated changes were too small relative to survey uncertainty to draw a firm conclusion. The results show worsening poverty in some parts of the city and declines in others, while the direction of change remains unclear across most tracts. The article’s exact figures for Eastwick, Fairhill, and Holmesburg cannot be confirmed because the neighborhood boundaries used in those calculations were not published."
+  },
+  {
+    "objectID": "weekly-notes/week-04.html",
+    "href": "weekly-notes/week-04.html",
+    "title": "Week 4: Working with Spatial Data in R",
+    "section": "",
+    "text": "This week introduced the foundations of working with spatial data in R. We covered joining Census tables by GEOID, working with sf objects and their geometry columns, interpreting coordinate reference systems (CRS) and map projections, using spatial predicates and joins, measuring distance, filtering and modifying geometries, and mapping with geom_sf()."
+  },
+  {
+    "objectID": "weekly-notes/week-04.html#what-we-did",
+    "href": "weekly-notes/week-04.html#what-we-did",
+    "title": "Week 4: Working with Spatial Data in R",
+    "section": "",
+    "text": "This week introduced the foundations of working with spatial data in R. We covered joining Census tables by GEOID, working with sf objects and their geometry columns, interpreting coordinate reference systems (CRS) and map projections, using spatial predicates and joins, measuring distance, filtering and modifying geometries, and mapping with geom_sf()."
+  },
+  {
+    "objectID": "weekly-notes/week-04.html#key-concepts",
+    "href": "weekly-notes/week-04.html#key-concepts",
+    "title": "Week 4: Working with Spatial Data in R",
+    "section": "Key Concepts",
+    "text": "Key Concepts\n\nTable joins require a shared key that represents the same geography in both tables.\nAn sf object is a data frame with a geometry column that stores spatial shape and location.\nA CRS tells us what coordinate values mean; geometry and CRS must be interpreted together.\nst_set_crs() labels coordinates, while st_transform() converts coordinates.\nSpatial joins use location rather than a shared ID, and geom_sf() draws the geometry column automatically."
+  },
+  {
+    "objectID": "weekly-notes/week-04.html#note",
+    "href": "weekly-notes/week-04.html#note",
+    "title": "Week 4: Working with Spatial Data in R",
+    "section": "Note",
+    "text": "Note\n\n1. Table joins\nTwo tables can be joined when they share the same key, usually GEOID.\nleft_join(income_23, income_15, by = \"GEOID\")\nExample:\n\n\n\nincome_23\n\nincome_15\n\n\n\n\n\nGEOID\nmed_inc_23\nGEOID\nmed_inc_15\n\n\n100\n82000\n100\n61000\n\n\n200\n31500\n200\n27000\n\n\n300\n45000\n400\n39000\n\n\n\nAfter a left join:\n\n\n\nGEOID\nmed_inc_23\nmed_inc_15\n\n\n\n\n100\n82000\n61000\n\n\n200\n31500\n27000\n\n\n300\n45000\nNA\n\n\n\nleft_join(): keep all rows from the left table.\ninner_join(): keep only matches in both tables.\nfull_join(): keep everything from both tables.\nImportant: the join key must represent the same thing in both tables. Same column name does not necessarily mean the same geography. Check geographic level, vintage, and GEOID formatting before joining.\nCensus tract boundaries and GEOIDs can change over time, so two years may have different row counts. Always check before comparing years.\n\n\n2. Spatial data and sf\nsf = Simple Features.\nAn sf object is a normal data frame with one additional column:\n\n\n\nGEOID\nmed_inc_23\nmed_inc_15\ngeometry\n\n\n\n\n100\n82000\n61000\nPOLYGON(…)\n\n\n200\n31500\n27000\nPOLYGON(…)\n\n\n300\n45000\nNA\nPOLYGON(…)\n\n\n\nThe geometry column stores the spatial shape and location.\nCommon formats:\n\n.shp\n.gdb\n\nWhen using get_acs():\nget_acs(..., geometry = TRUE)\nreturns ACS attributes together with geometry.\nGeometry is “sticky.” In an sf object, the geometry column usually stays attached even after select().\nIf geometry is no longer needed:\nst_drop_geometry()\n\n\n3. Coordinate Reference Systems (CRS)\nA CRS tells us what spatial coordinates mean.\nGeographic vs. Projected:\n\n\n\nType\nCoordinates\nTypical units\n\n\n\n\nGeographic CRS\nlongitude / latitude\ndegrees\n\n\nProjected CRS\nx / y\nmeters or feet\n\n\n\nExamples from class:\n\n\n\nEPSG\nCRS\nUnits\n\n\n\n\n4326\nWGS 84\ndegrees\n\n\n4269\nNAD83\ndegrees\n\n\n5070\nAlbers Equal Area\nmeters\n\n\n2272\nPennsylvania South State Plane\nUS feet\n\n\n\nGeometry gives the coordinates; CRS tells us how to interpret them.\n\nDatum\nAn ellipsoid is the mathematical model used to approximate Earth’s shape; a datum connects and anchors that model to the real Earth.\n\nEllipsoid = mathematical model of Earth’s shape\nDatum = reference framework that positions that model on Earth\n\nClass example:\nClarke 1866 + Meades Ranch, Kansas\n            ↓\n           NAD27\n            ↓\n           NAD83\n            ↓\n           WGS84\nNAD83 and WGS84 are Earth-centered reference systems; WGS84 is widely used by GPS.\n\n\n\n4. Map projections\nThe Earth is curved, but maps are flat, so projection always introduces distortion.\nThe four properties discussed in class are:\n\nShape\nArea\nDistance\nDirection\n\nA projection cannot preserve all four perfectly everywhere.\n\nProjection families\n\nCylindrical\nTransverse Cylindrical\nConic\n\nThe line where a projection surface touches the Earth is the line of tangency; distortion is minimized there.\nWhat can be preserved?\n\nConformal: preserves local shape / angles\nEqual-area: preserves area\nEquidistant: preserves specified distances\n\nExample:\nLambert Conformal Conic\n        ↑          ↑\n   preserved     projection\n    property       family\n\n\n\n5. UTM\nUTM = Universal Transverse Mercator.\nThe Earth is divided into 60 zones, each about 6° of longitude wide.\n\\[\n360° / 6° = 60\\ \\text{zones}\n\\]\nEach zone uses a Transverse Mercator projection.\nCoordinates are Easting (x) and Northing (y), and are measured in meters.\nThe central meridian uses a false easting of 500,000 m, helping avoid negative Easting values.\n\n\n6. st_set_crs() vs. st_transform()\nThese are not the same.\n\nst_set_crs()\nst_set_crs(x, 2272)\nAdds or corrects the CRS label. The coordinate numbers do not change.\nUse it only when the existing coordinates are already in that CRS but the metadata are missing or wrong.\n\n\nst_transform()\nst_transform(x, 2272)\nActually converts the coordinates into a new CRS.\nMemory aid: set_crs = label; transform = convert.\n\n\n\n7. Spatial relationships\nSuppose:\n\nA and B share a boundary.\nC lies completely inside A.\n\n\nst_intersects()\nAsks whether two geometries share any point.\n\n\n\nRelationship\nResult\n\n\n\n\nA-B\nTRUE\n\n\nA-C\nTRUE\n\n\nA-A\nTRUE\n\n\n\n\n\nst_touches()\nAsks whether geometries touch only along their boundaries, without interior overlap.\n\n\n\nRelationship\nResult\n\n\n\n\nA-B\nTRUE\n\n\nA-C\nFALSE\n\n\nA-A\nFALSE\n\n\n\n\n\nst_within()\nAsks whether one geometry is inside another.\nst_within(C, A) = TRUE\nst_within(A, C) = FALSE\nwithin is directional.\n\n\n\n8. Spatial join: st_join()\nst_join(stations, tracts)\nThis is a join by location, not by a shared ID.\nFor each station point, R finds the tract containing it and attaches tract attributes such as median income.\nConceptually:\nstation point\n     ↓ where is it?\ntract polygon\n     ↓\nstation + tract attributes\nCompare:\n\nleft_join() → join by WHAT / shared key\nst_join() → join by WHERE / spatial relationship\n\nIf one feature in x matches multiple features in y, st_join() can create multiple output rows. Always check the row count after a spatial join.\n\n\n9. Distance\nst_distance(stations, tracts)\nst_distance() normally returns a matrix.\nIf there are 5 stations and 5 tracts, the output contains all station-tract distance combinations.\nBefore measuring distance, use an appropriate projected CRS and check the units.\n\n\n10. Filtering and changing geometry\nHow many tracts are near (for example, within 1/2 mile of) a station? A buffer can create the “near” area around stations.\n\nst_filter()\nst_filter(tracts, service_area)\nKeeps the original tract shapes that satisfy the spatial relationship. Use it when the goal is to select / count features.\n\n\nst_intersection()\nst_intersection(tracts, service_area)\nReturns only the overlapping pieces. The shapes change. Use it when the goal is to measure the actual common area.\n\n\nst_union()\nst_union(service_areas)\nCombines multiple geometries into one overall geometry.\n\nst_buffer() → create a distance zone / new polygon\nst_filter() → keep whole features\nst_intersection() → keep only common areas\nst_union() → combine geometries\n\n\n\n\n11. Mapping with geom_sf()\nggplot(philly_tracts) +\n  geom_sf(aes(fill = med_incE), color = NA) +\n  scale_fill_viridis_c(labels = scales::dollar) +\n  theme_void()\ngeom_sf() draws the geometry column automatically.\n\ngeometry → where / what shape\nmed_incE → fill color\n\nIf you see:\nstat_sf() requires the following missing aesthetics: geometry\nthe object is probably not an sf object or no longer has geometry.\nCheck:\nclass(philly_tracts)\nnames(philly_tracts)"
+  },
+  {
+    "objectID": "weekly-notes/week-04.html#proving-r-works",
+    "href": "weekly-notes/week-04.html#proving-r-works",
+    "title": "Week 4: Working with Spatial Data in R",
+    "section": "Proving R Works",
+    "text": "Proving R Works\n~{r} #| label: session-info #| echo: true\nsessionInfo() ~"
+  },
+  {
+    "objectID": "weekly-notes/week-04.html#reflection",
+    "href": "weekly-notes/week-04.html#reflection",
+    "title": "Week 4: Working with Spatial Data in R",
+    "section": "Reflection",
+    "text": "Reflection\nThis week clarified that spatial data are not just tables with an extra column. The geometry and CRS together determine how locations, distance, area, and spatial relationships should be interpreted. I also found the distinction between a table join and a spatial join useful: one matches by a shared key, while the other matches by location."
+  },
+  {
+    "objectID": "weekly-notes/week-04.html#questions-i-still-have",
+    "href": "weekly-notes/week-04.html#questions-i-still-have",
+    "title": "Week 4: Working with Spatial Data in R",
+    "section": "Questions I Still Have",
+    "text": "Questions I Still Have\nNone."
   }
 ]
