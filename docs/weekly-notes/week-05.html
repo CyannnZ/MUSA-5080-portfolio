@@ -1,0 +1,1696 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.10.18">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="dcterms.date" content="2026-09-25">
+<meta name="description" content="Features, least squares, regression output, train/test evaluation, cross validation, overfitting, and model assumptions.">
+
+<title>Week 5: Linear Regression, Prediction &amp; Model Evaluation – Chenyan Zhao - MUSA 5080 Portfolio</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-92404dd89b1444827012a9e3a58cda88.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../index.html">
+    <span class="navbar-title">Portfolio</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../index.html"> 
+<span class="menu-text">Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../about.html"> 
+<span class="menu-text">About</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../weekly-notes/index.html"> 
+<span class="menu-text">Weekly Notes</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../assignments/index.html"> 
+<span class="menu-text">Assignments</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/CyannnZ/MUSA-5080-portfolio"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#what-we-did" id="toc-what-we-did" class="nav-link active" data-scroll-target="#what-we-did">What We Did</a></li>
+  <li><a href="#key-concepts" id="toc-key-concepts" class="nav-link" data-scroll-target="#key-concepts">Key Concepts</a></li>
+  <li><a href="#note" id="toc-note" class="nav-link" data-scroll-target="#note">Note</a>
+  <ul class="collapse">
+  <li><a href="#from-data-to-a-model-features-yfxepsilon" id="toc-from-data-to-a-model-features-yfxepsilon" class="nav-link" data-scroll-target="#from-data-to-a-model-features-yfxepsilon">1. From Data to a Model: Features → <span class="math inline">\(Y=f(X)+\epsilon\)</span></a></li>
+  <li><a href="#model-flexibility-rigid-flexible" id="toc-model-flexibility-rigid-flexible" class="nav-link" data-scroll-target="#model-flexibility-rigid-flexible">2. Model Flexibility: Rigid → Flexible</a></li>
+  <li><a href="#linear-regression-prediction-vs.-inference" id="toc-linear-regression-prediction-vs.-inference" class="nav-link" data-scroll-target="#linear-regression-prediction-vs.-inference">3. Linear Regression: Prediction vs.&nbsp;Inference</a></li>
+  <li><a href="#least-squares-how-is-the-regression-line-found" id="toc-least-squares-how-is-the-regression-line-found" class="nav-link" data-scroll-target="#least-squares-how-is-the-regression-line-found">4. Least Squares: How Is the Regression Line Found?</a></li>
+  <li><a href="#reading-linear-regression-output-in-r" id="toc-reading-linear-regression-output-in-r" class="nav-link" data-scroll-target="#reading-linear-regression-output-in-r">5. Reading Linear Regression Output in R</a></li>
+  <li><a href="#noise-in-y-vs.-noise-in-x" id="toc-noise-in-y-vs.-noise-in-x" class="nav-link" data-scroll-target="#noise-in-y-vs.-noise-in-x">6. Noise in Y vs.&nbsp;Noise in X</a></li>
+  <li><a href="#fit-vs.-prediction" id="toc-fit-vs.-prediction" class="nav-link" data-scroll-target="#fit-vs.-prediction">7. Fit vs.&nbsp;Prediction</a></li>
+  <li><a href="#train-test-split" id="toc-train-test-split" class="nav-link" data-scroll-target="#train-test-split">8. Train / Test Split</a></li>
+  <li><a href="#rmse-evaluating-prediction-error" id="toc-rmse-evaluating-prediction-error" class="nav-link" data-scroll-target="#rmse-evaluating-prediction-error">9. RMSE: Evaluating Prediction Error</a></li>
+  <li><a href="#cross-validation-cv" id="toc-cross-validation-cv" class="nav-link" data-scroll-target="#cross-validation-cv">10. Cross Validation (CV)</a></li>
+  <li><a href="#overfitting" id="toc-overfitting" class="nav-link" data-scroll-target="#overfitting">11. Overfitting</a></li>
+  <li><a href="#how-to-pick-features" id="toc-how-to-pick-features" class="nav-link" data-scroll-target="#how-to-pick-features">12. How to Pick Features?</a></li>
+  <li><a href="#multicollinearity" id="toc-multicollinearity" class="nav-link" data-scroll-target="#multicollinearity">13. Multicollinearity</a></li>
+  <li><a href="#homoskedasticity" id="toc-homoskedasticity" class="nav-link" data-scroll-target="#homoskedasticity">14. Homoskedasticity</a></li>
+  </ul></li>
+  <li><a href="#proving-r-works" id="toc-proving-r-works" class="nav-link" data-scroll-target="#proving-r-works">Proving R Works</a></li>
+  <li><a href="#reflection" id="toc-reflection" class="nav-link" data-scroll-target="#reflection">Reflection</a></li>
+  <li><a href="#questions-i-still-have" id="toc-questions-i-still-have" class="nav-link" data-scroll-target="#questions-i-still-have">Questions I Still Have</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<div class="quarto-title-block"><div><h1 class="title">Week 5: Linear Regression, Prediction &amp; Model Evaluation</h1><button type="button" class="btn code-tools-button" id="quarto-code-tools-source"><i class="bi"></i> Code</button></div></div>
+</div>
+
+<div>
+  <div class="description">
+    Features, least squares, regression output, train/test evaluation, cross validation, overfitting, and model assumptions.
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">September 25, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="what-we-did" class="level2">
+<h2 class="anchored" data-anchor-id="what-we-did">What We Did</h2>
+<p>This week, we started with the relationship between features and an outcome, then learned how linear regression fits data by least squares. We interpreted coefficients, standard errors, t-values, and p-values. We compared in-sample fit with out-of-sample prediction, evaluated models using a train/test split, RMSE, and cross validation, and discussed overfitting, feature selection, multicollinearity, and homoskedasticity.</p>
+</section>
+<section id="key-concepts" class="level2">
+<h2 class="anchored" data-anchor-id="key-concepts">Key Concepts</h2>
+<ul>
+<li><span class="math inline">\(Y\)</span> is the outcome or target; <span class="math inline">\(X\)</span> represents the features or predictors used to explain or predict <span class="math inline">\(Y\)</span>.</li>
+<li>Prediction focuses on the predicted value <span class="math inline">\(\hat{Y}\)</span>, while inference focuses on estimated coefficients <span class="math inline">\(\hat{\beta}\)</span>.</li>
+<li>Least squares minimizes the sum of squared residuals. Statistical significance does not establish practical importance or causation.</li>
+<li><span class="math inline">\(R^2\)</span> describes in-sample fit; test-set or cross-validation RMSE measures prediction error on unseen data.</li>
+<li>Select features based on out-of-sample prediction performance, while checking for overfitting, multicollinearity, and heteroskedasticity.</li>
+</ul>
+</section>
+<section id="note" class="level2">
+<h2 class="anchored" data-anchor-id="note">Note</h2>
+<section id="from-data-to-a-model-features-yfxepsilon" class="level3">
+<h3 class="anchored" data-anchor-id="from-data-to-a-model-features-yfxepsilon">1. From Data to a Model: Features → <span class="math inline">\(Y=f(X)+\epsilon\)</span></h3>
+<p>Consider predicting rent. Each row is an observation, such as a census tract, and each column is a variable that describes it.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Variable</th>
+<th>Meaning</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>GEOID</code></td>
+<td>Geographic unit ID</td>
+<td>100</td>
+</tr>
+<tr class="even">
+<td><code>med_rent</code></td>
+<td>Median rent</td>
+<td>$1,650</td>
+</tr>
+<tr class="odd">
+<td><code>med_inc</code></td>
+<td>Median income</td>
+<td>$82,000</td>
+</tr>
+<tr class="even">
+<td><code>pct_renters</code></td>
+<td>Share of residents who rent</td>
+<td>0.71</td>
+</tr>
+<tr class="odd">
+<td><code>pct_ba</code></td>
+<td>Share with a bachelor’s degree or higher</td>
+<td>0.64</td>
+</tr>
+<tr class="even">
+<td><code>n_stations</code></td>
+<td>Number of nearby transit stations</td>
+<td>3</td>
+</tr>
+<tr class="odd">
+<td><code>rent_cv</code></td>
+<td>Rent coefficient of variation</td>
+<td>9.8</td>
+</tr>
+<tr class="even">
+<td><code>geometry</code></td>
+<td>Spatial geometry</td>
+<td>polygon</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Y / outcome / target:</strong> The result we want to explain or predict, such as <code>rent</code>.</li>
+<li><strong>X / features / predictors:</strong> Variables used to explain or predict Y, such as income, education, and transit access.</li>
+<li>In practical data analysis, <em>feature</em>, <em>variable</em>, <em>indicator</em>, and <em>column</em> often refer to similar ideas.</li>
+</ul>
+<p>The central relationship is:</p>
+<p><span class="math display">\[
+Y = f(X) + \epsilon
+\]</span></p>
+<ul>
+<li><span class="math inline">\(f(X)\)</span> is the real but unknown relationship between X and Y.</li>
+<li><span class="math inline">\(\epsilon\)</span> is the part the model does not explain, including random error and omitted factors.</li>
+</ul>
+<p>For example:</p>
+<p><span class="math display">\[
+Rent = f(Income) + \epsilon
+\]</span></p>
+<p>We use data to approximate the unknown <span class="math inline">\(f(X)\)</span>.</p>
+</section>
+<section id="model-flexibility-rigid-flexible" class="level3">
+<h3 class="anchored" data-anchor-id="model-flexibility-rigid-flexible">2. Model Flexibility: Rigid → Flexible</h3>
+<p>Linear → Lasso / Ridge → Logistic → Trees → Random Forest → Boosting → Neural Networks</p>
+<p>Models on the rigid end:</p>
+<ul>
+<li>Make stronger assumptions about the function’s form.</li>
+<li>Are usually easier to interpret.</li>
+<li>Make inference about coefficients or slopes easier.</li>
+</ul>
+<p>Models on the flexible end:</p>
+<ul>
+<li>Can learn nonlinear relationships and interactions.</li>
+<li>Often capture complex patterns better.</li>
+<li>Are usually harder to interpret and more prone to overfitting.</li>
+</ul>
+<p><strong>Interpretability ↔︎ Flexibility</strong></p>
+<section id="parametric-vs.-non-parametric" class="level4">
+<h4 class="anchored" data-anchor-id="parametric-vs.-non-parametric">Parametric vs.&nbsp;Non-parametric</h4>
+<p>A <strong>parametric model</strong> assumes a functional form first, then estimates a finite number of parameters. For linear regression:</p>
+<p><span class="math display">\[
+f(X) = \beta_0 + \beta_1 X
+\]</span></p>
+<p>We only need to estimate <span class="math inline">\(\beta_0\)</span> and <span class="math inline">\(\beta_1\)</span>.</p>
+<p>A <strong>non-parametric model</strong> does not prescribe a fixed functional form in advance. It lets the model learn a more complex relationship from the data.</p>
+<p>Non-parametric does not mean “without parameters.” The point is that a fixed functional form with a finite number of parameters was not specified in advance.</p>
+</section>
+</section>
+<section id="linear-regression-prediction-vs.-inference" class="level3">
+<h3 class="anchored" data-anchor-id="linear-regression-prediction-vs.-inference">3. Linear Regression: Prediction vs.&nbsp;Inference</h3>
+<p>The linear regression model is:</p>
+<p><span class="math display">\[
+Y = \beta_0 + \beta_1 X + \epsilon
+\]</span></p>
+<p>After estimating it from a sample:</p>
+<p><span class="math display">\[
+\hat{Y} = \hat{\beta}_0 + \hat{\beta}_1 X
+\]</span></p>
+<ul>
+<li><span class="math inline">\(\beta_0\)</span> is the intercept.</li>
+<li><span class="math inline">\(\beta_1\)</span> is the coefficient or slope.</li>
+<li><span class="math inline">\(\hat{\beta}\)</span> is a coefficient estimated from the sample.</li>
+<li><span class="math inline">\(\hat{Y}\)</span> is the predicted value of Y.</li>
+</ul>
+<section id="prediction" class="level4">
+<h4 class="anchored" data-anchor-id="prediction">Prediction</h4>
+<p>What will Y be? The goal is for <span class="math inline">\(\hat{Y}\)</span> to be close to Y. The specific interpretation of each coefficient may not be the main concern.</p>
+<p><strong>Prediction focuses on <span class="math inline">\(\hat{Y}\)</span>.</strong></p>
+</section>
+<section id="inference" class="level4">
+<h4 class="anchored" data-anchor-id="inference">Inference</h4>
+<p>What is the relationship between X and Y? The focus is on <span class="math inline">\(\hat{\beta}\)</span>:</p>
+<ul>
+<li>Is the direction positive or negative?</li>
+<li>How large is the effect size?</li>
+<li>Is there statistical evidence that the relationship differs from zero?</li>
+</ul>
+<p><strong>Inference focuses on <span class="math inline">\(\hat{\beta}\)</span>.</strong></p>
+</section>
+</section>
+<section id="least-squares-how-is-the-regression-line-found" class="level3">
+<h3 class="anchored" data-anchor-id="least-squares-how-is-the-regression-line-found">4. Least Squares: How Is the Regression Line Found?</h3>
+<p>For observation <span class="math inline">\(i\)</span>:</p>
+<ul>
+<li>Observed value: <span class="math inline">\(y_i\)</span>.</li>
+<li>Predicted value: <span class="math inline">\(\hat{y}_i\)</span>.</li>
+<li>Residual: <span class="math inline">\(e_i = y_i - \hat{y}_i\)</span>.</li>
+</ul>
+<p>Positive and negative residuals can cancel when added directly, so we square the errors and add them:</p>
+<p><span class="math display">\[
+RSS = \sum_{i=1}^{n}(y_i - \hat{y}_i)^2
+\]</span></p>
+<p>The least-squares objective is:</p>
+<p><span class="math display">\[
+\min_{\beta_0,\beta_1}\sum_{i=1}^{n}[y_i-(\beta_0+\beta_1 x_i)]^2
+\]</span></p>
+<p>That is, find <span class="math inline">\(\hat{\beta}_0\)</span> and <span class="math inline">\(\hat{\beta}_1\)</span> that minimize the sum of the squared vertical distances from the data points to the regression line.</p>
+<p><span class="math display">\[
+Y=f(X)+\epsilon \rightarrow Y=\beta_0+\beta_1X+\epsilon
+\rightarrow \text{Least Squares}
+\rightarrow \hat{Y}=\hat{\beta}_0+\hat{\beta}_1X
+\]</span></p>
+</section>
+<section id="reading-linear-regression-output-in-r" class="level3">
+<h3 class="anchored" data-anchor-id="reading-linear-regression-output-in-r">5. Reading Linear Regression Output in R</h3>
+<p>Class example:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>m1 <span class="ot">&lt;-</span> <span class="fu">lm</span>(med_rent <span class="sc">~</span> med_inc, <span class="at">data =</span> tracts)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(m1)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The output is approximately:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th></th>
+<th style="text-align: right;">Estimate</th>
+<th style="text-align: right;">S.E.</th>
+<th style="text-align: right;">t-value</th>
+<th>p-value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Intercept</td>
+<td style="text-align: right;">690.0</td>
+<td style="text-align: right;">38.0</td>
+<td style="text-align: right;">18.2</td>
+<td>&lt; 2e-16</td>
+</tr>
+<tr class="even">
+<td><code>med_inc</code></td>
+<td style="text-align: right;">0.0081</td>
+<td style="text-align: right;">0.0005</td>
+<td style="text-align: right;">16.2</td>
+<td>&lt; 2e-16</td>
+</tr>
+</tbody>
+</table>
+<p>The fitted model is:</p>
+<p><span class="math display">\[
+\widehat{Rent}=690+0.0081\times Income
+\]</span></p>
+<section id="estimate" class="level4">
+<h4 class="anchored" data-anchor-id="estimate">Estimate</h4>
+<p>The units of <span class="math inline">\(\hat{\beta}_1=0.0081\)</span> are:</p>
+<p><span class="math display">\[
+\frac{\text{dollars of monthly rent}}{\text{dollar of annual income}}
+\]</span></p>
+<p>For a $10,000 increase in annual income:</p>
+<p><span class="math display">\[
+0.0081\times 10{,}000=81
+\]</span></p>
+<p>Interpretation: for each $10,000 increase in annual income, predicted monthly rent rises by about $81 on average.</p>
+<p>This is an association or predicted difference. This regression alone does not show that income causes rent to rise.</p>
+</section>
+<section id="standard-error-s.e." class="level4">
+<h4 class="anchored" data-anchor-id="standard-error-s.e.">Standard Error (S.E.)</h4>
+<p>The standard error measures uncertainty in a coefficient estimate.</p>
+<ul>
+<li>Smaller SE → a more precise coefficient estimate.</li>
+<li>Larger SE → a less certain coefficient estimate.</li>
+</ul>
+<p>It is not the prediction error for each observation.</p>
+</section>
+<section id="t-value" class="level4">
+<h4 class="anchored" data-anchor-id="t-value">t-value</h4>
+<p><span class="math display">\[
+t=\frac{Estimate}{Standard\ Error}
+\]</span></p>
+<p>Here:</p>
+<p><span class="math display">\[
+t=\frac{0.0081}{0.0005}\approx16.2
+\]</span></p>
+<p>We test <span class="math inline">\(H_0:\beta_1=0\)</span>. In class, <span class="math inline">\(|t|&gt;1.96\)</span> was used as an approximate reference for a large-sample, two-sided 5% test.</p>
+</section>
+<section id="p-value" class="level4">
+<h4 class="anchored" data-anchor-id="p-value">p-value</h4>
+<p>Here, <span class="math inline">\(p&lt;2\times10^{-16}\)</span>. If <span class="math inline">\(H_0:\beta_1=0\)</span> and the model assumptions hold, the probability of observing a test statistic this extreme or more extreme is very small.</p>
+<p>We can therefore reject <span class="math inline">\(H_0\)</span>: the data provide strong statistical evidence of a linear association between income and rent.</p>
+<blockquote class="blockquote">
+<p>Statistically significant ≠ practically important ≠ causal.</p>
+</blockquote>
+<p><strong>Estimate → SE → t → p</strong></p>
+</section>
+</section>
+<section id="noise-in-y-vs.-noise-in-x" class="level3">
+<h3 class="anchored" data-anchor-id="noise-in-y-vs.-noise-in-x">6. Noise in Y vs.&nbsp;Noise in X</h3>
+<section id="noise-in-y-residuals" class="level4">
+<h4 class="anchored" data-anchor-id="noise-in-y-residuals">Noise in Y → Residuals</h4>
+<p>Random variation in Y and factors the model does not explain appear in the residuals:</p>
+<p><span class="math display">\[
+Observed\ Y=Predicted\ Y+Residual
+\]</span></p>
+<p>But residuals are not necessarily all random noise:</p>
+<p><span class="math display">\[
+Residual=Random\ Noise+Unmodeled\ Systematic\ Variation
+\]</span></p>
+<p>For example, suppose transit accessibility affects rent but the model only includes income. Variation due to transit will enter the residuals, even though it is systematic variation rather than purely random noise.</p>
+</section>
+<section id="noise-in-x-flattens-the-slope" class="level4">
+<h4 class="anchored" data-anchor-id="noise-in-x-flattens-the-slope">Noise in X → Flattens the Slope</h4>
+<p>If the predictor has measurement error:</p>
+<p><span class="math display">\[
+X_{observed}=X_{true}+noise
+\]</span></p>
+<p>Under classical random measurement-error conditions, the estimated slope is usually pulled toward zero: <span class="math inline">\(|\hat{\beta}_1|\downarrow\)</span>. This is called <strong>attenuation bias</strong>.</p>
+</section>
+</section>
+<section id="fit-vs.-prediction" class="level3">
+<h3 class="anchored" data-anchor-id="fit-vs.-prediction">7. Fit vs.&nbsp;Prediction</h3>
+<section id="model-fit" class="level4">
+<h4 class="anchored" data-anchor-id="model-fit">Model Fit</h4>
+<p>A common fit measure is <span class="math inline">\(R^2\)</span>.</p>
+<p>In this class, <span class="math inline">\(R^2\)</span> describes how well the model fits the data used to estimate it: its in-sample fit. For example, <span class="math inline">\(R^2=0.70\)</span> means the model explains about 70% of the variation in Y within the sample.</p>
+<blockquote class="blockquote">
+<p>Good fit ≠ good prediction.</p>
+</blockquote>
+<p>A model can fit the training data well yet predict new data poorly.</p>
+</section>
+</section>
+<section id="train-test-split" class="level3">
+<h3 class="anchored" data-anchor-id="train-test-split">8. Train / Test Split</h3>
+<p>A typical split is 80% training and 20% test data.</p>
+<ul>
+<li><strong>Training set:</strong> Used to fit the model.</li>
+<li><strong>Test set:</strong> Kept entirely out of training and used to evaluate prediction on unseen data.</li>
+</ul>
+<p>Fit the model on the training set, use <span class="math inline">\(X_{test}\)</span> to generate <span class="math inline">\(\hat{Y}_{test}\)</span>, and compare actual Y with predicted <span class="math inline">\(\hat{Y}\)</span>.</p>
+</section>
+<section id="rmse-evaluating-prediction-error" class="level3">
+<h3 class="anchored" data-anchor-id="rmse-evaluating-prediction-error">9. RMSE: Evaluating Prediction Error</h3>
+<p><span class="math display">\[
+RMSE=\sqrt{\frac{1}{n}\sum_{i=1}^{n}(y_i-\hat{y}_i)^2}
+\]</span></p>
+<p>Calculation steps:</p>
+<ol type="1">
+<li>Subtract predicted values from actual values.</li>
+<li>Square the errors.</li>
+<li>Take their mean.</li>
+<li>Take the square root.</li>
+</ol>
+<p>Example:</p>
+<ul>
+<li>Observation 1: <span class="math inline">\(500-400=100\rightarrow100^2=10{,}000\)</span>.</li>
+<li>Observation 2: <span class="math inline">\(900-1200=-300\rightarrow(-300)^2=90{,}000\)</span>.</li>
+</ul>
+<p><span class="math display">\[
+MSE=\frac{10{,}000+90{,}000}{2}=50{,}000
+\]</span></p>
+<p><span class="math display">\[
+RMSE=\sqrt{50{,}000}\approx223.6
+\]</span></p>
+<p>If Y is monthly rent, RMSE is approximately $224 per month.</p>
+<p>RMSE is easy to interpret because taking the square root returns it to the original units of Y. <strong>Lower RMSE is better.</strong></p>
+<section id="r2-vs.-rmse" class="level4">
+<h4 class="anchored" data-anchor-id="r2-vs.-rmse"><span class="math inline">\(R^2\)</span> vs.&nbsp;RMSE</h4>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th></th>
+<th><span class="math inline">\(R^2\)</span></th>
+<th>RMSE</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>What it mainly measures</td>
+<td>Model fit</td>
+<td>Prediction error</td>
+</tr>
+<tr class="even">
+<td>Class emphasis</td>
+<td>Training / fitted data</td>
+<td>Test / unseen data</td>
+</tr>
+<tr class="odd">
+<td>Units</td>
+<td>Unitless</td>
+<td>Same as Y</td>
+</tr>
+<tr class="even">
+<td>Better direction</td>
+<td>Higher</td>
+<td>Lower</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="cross-validation-cv" class="level3">
+<h3 class="anchored" data-anchor-id="cross-validation-cv">10. Cross Validation (CV)</h3>
+<p>A single train/test split can be affected by chance: the result may depend on which observations happened to enter the test set. K-fold cross validation addresses this concern.</p>
+<section id="fold-cv" class="level4">
+<h4 class="anchored" data-anchor-id="fold-cv">5-Fold CV</h4>
+<p>Suppose there are 100 records, divided into five groups of 20. In each round:</p>
+<ul>
+<li>Four folds are used for training.</li>
+<li>One fold is used for testing.</li>
+<li>Each fold takes a turn as the test set.</li>
+</ul>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th style="text-align: right;">Round</th>
+<th>Training</th>
+<th>Test</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">1</td>
+<td>Folds 2–5</td>
+<td>Fold 1</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2</td>
+<td>Folds 1, 3–5</td>
+<td>Fold 2</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">3</td>
+<td>Folds 1–2, 4–5</td>
+<td>Fold 3</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">4</td>
+<td>Folds 1–3, 5</td>
+<td>Fold 4</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5</td>
+<td>Folds 1–4</td>
+<td>Fold 5</td>
+</tr>
+</tbody>
+</table>
+<p>This produces <span class="math inline">\(RMSE_1,RMSE_2,RMSE_3,RMSE_4,RMSE_5\)</span>. One way to combine the results is:</p>
+<p><span class="math display">\[
+CV\ RMSE=\frac{RMSE_1+\cdots+RMSE_5}{5}
+\]</span></p>
+<p>The central goal of CV is to evaluate generalization to unseen data.</p>
+</section>
+</section>
+<section id="overfitting" class="level3">
+<h3 class="anchored" data-anchor-id="overfitting">11. Overfitting</h3>
+<p>Class summary: <strong>Overfitting = learned the noise!</strong></p>
+<p>Ideally, a model learns <span class="math inline">\(f(X)\)</span>. An excessively flexible model may learn both the signal and the noise.</p>
+<p>A typical pattern is <span class="math inline">\(RMSE_{train}\downarrow\)</span> while <span class="math inline">\(RMSE_{test}\uparrow\)</span>.</p>
+<blockquote class="blockquote">
+<p>Excellent training fit ≠ good prediction.</p>
+</blockquote>
+<p>Cross validation helps identify overfitting because each round requires the model to predict data it did not see during that round’s training.</p>
+</section>
+<section id="how-to-pick-features" class="level3">
+<h3 class="anchored" data-anchor-id="how-to-pick-features">12. How to Pick Features?</h3>
+<p>If the goal is prediction, feature selection should not be based only on:</p>
+<ul>
+<li>The highest training <span class="math inline">\(R^2\)</span>.</li>
+<li>The smallest p-value.</li>
+<li>The largest number of features.</li>
+</ul>
+<p>The question is: <strong>Which features produce the best predictions on unseen data?</strong></p>
+<p>For example:</p>
+<p><span class="math display">\[
+M_1: Rent\sim Income
+\]</span></p>
+<p><span class="math display">\[
+M_2: Rent\sim Income+Education
+\]</span></p>
+<p><span class="math display">\[
+M_3: Rent\sim Income+Education+Stations
+\]</span></p>
+<p>Compare their CV RMSE:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Model</th>
+<th>Features</th>
+<th style="text-align: right;">CV RMSE</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>M1</td>
+<td>Income</td>
+<td style="text-align: right;">$320</td>
+</tr>
+<tr class="even">
+<td>M2</td>
+<td>Income + Education</td>
+<td style="text-align: right;">$270</td>
+</tr>
+<tr class="odd">
+<td>M3</td>
+<td>Income + Education + Stations</td>
+<td style="text-align: right;">$285</td>
+</tr>
+</tbody>
+</table>
+<p>M2 has the best out-of-sample prediction here because it has the lowest RMSE.</p>
+<p>After adding a feature:</p>
+<ul>
+<li>If RMSE falls, the feature helps prediction.</li>
+<li>If RMSE rises, complexity has increased while generalization has worsened; the feature may not be worth adding.</li>
+</ul>
+<p><strong>Pick features by out-of-sample prediction performance.</strong></p>
+</section>
+<section id="multicollinearity" class="level3">
+<h3 class="anchored" data-anchor-id="multicollinearity">13. Multicollinearity</h3>
+<p>Multicollinearity means that multiple predictors are strongly correlated. Median income and per-capita income, for example, might have <span class="math inline">\(Corr(X_1,X_2)\approx0.90\)</span>.</p>
+<section id="effect-on-inference" class="level4">
+<h4 class="anchored" data-anchor-id="effect-on-inference">Effect on Inference</h4>
+<p>The effects are more pronounced for inference:</p>
+<ul>
+<li>Coefficients become unstable.</li>
+<li>Standard errors increase.</li>
+<li>Coefficients can become sensitive to model specification.</li>
+</ul>
+<p>The model has difficulty distinguishing which X explains Y.</p>
+</section>
+<section id="effect-on-prediction" class="level4">
+<h4 class="anchored" data-anchor-id="effect-on-prediction">Effect on Prediction</h4>
+<blockquote class="blockquote">
+<p>Mostly harmless, but check your prediction.</p>
+</blockquote>
+<p>If the goal is prediction, highly correlated predictors do not necessarily have to be removed. Check CV or test RMSE. If out-of-sample prediction has not worsened, multicollinearity alone is not enough to call the model poor.</p>
+</section>
+</section>
+<section id="homoskedasticity" class="level3">
+<h3 class="anchored" data-anchor-id="homoskedasticity">14. Homoskedasticity</h3>
+<p>One important assumption of linear regression is:</p>
+<p><span class="math display">\[
+Var(\epsilon\mid X)=\sigma^2
+\]</span></p>
+<p>This means that the variance of the residuals stays approximately constant across different levels of X.</p>
+<p>If the residuals spread out more as X increases, the pattern is called <strong>heteroskedasticity</strong>. It mainly affects inference:</p>
+<ul>
+<li>The coefficient itself is not necessarily biased as a result.</li>
+<li>Conventional standard errors may be unreliable.</li>
+<li>This, in turn, affects t-values and p-values.</li>
+</ul>
+<p>The sequence is: Estimate → SE → t → p.</p>
+<p>In practice, analysts often use heteroskedasticity-robust standard errors.</p>
+</section>
+</section>
+<section id="proving-r-works" class="level2">
+<h2 class="anchored" data-anchor-id="proving-r-works">Proving R Works</h2>
+<p><sub></sub>~{r} #| label: session-info #| echo: true</p>
+<p>sessionInfo() <sub></sub>~</p>
+</section>
+<section id="reflection" class="level2">
+<h2 class="anchored" data-anchor-id="reflection">Reflection</h2>
+<p>The central reminder from this week’s note is to evaluate training fit and prediction on new data separately. When interpreting coefficients, it is also important to distinguish statistical association from practical importance and causation, and to check the model assumptions behind standard errors.</p>
+</section>
+<section id="questions-i-still-have" class="level2">
+<h2 class="anchored" data-anchor-id="questions-i-still-have">Questions I Still Have</h2>
+<p>None.</p>
+
+
+<!-- -->
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+    const viewSource = window.document.getElementById('quarto-view-source') ||
+                       window.document.getElementById('quarto-code-tools-source');
+    if (viewSource) {
+      const sourceUrl = viewSource.getAttribute("data-quarto-source-url");
+      viewSource.addEventListener("click", function(e) {
+        if (sourceUrl) {
+          // rstudio viewer pane
+          if (/\bcapabilities=\b/.test(window.location)) {
+            window.open(sourceUrl);
+          } else {
+            window.location.href = sourceUrl;
+          }
+        } else {
+          const modal = new bootstrap.Modal(document.getElementById('quarto-embedded-source-code-modal'));
+          modal.show();
+        }
+        return false;
+      });
+    }
+    function toggleCodeHandler(show) {
+      return function(e) {
+        const cellDetails = window.document.querySelectorAll(".cell details.code-fold");
+        for (let i=0; i<cellDetails.length; i++) {
+          const details = cellDetails[i];
+          if (show) {
+            details.open = true;
+          } else {
+            details.removeAttribute("open");
+          }
+        }
+        const cellCodeDivs = window.document.querySelectorAll(".cell div.sourceCode.cell-code");
+        const fromCls = show ? "hidden" : "unhidden";
+        const toCls = show ? "unhidden" : "hidden";
+        for (let i=0; i<cellCodeDivs.length; i++) {
+          const codeDiv = cellCodeDivs[i];
+          if (codeDiv.classList.contains(fromCls)) {
+            codeDiv.classList.remove(fromCls);
+            codeDiv.classList.add(toCls);
+          } 
+        }
+        return false;
+      }
+    }
+    const hideAllCode = window.document.getElementById("quarto-hide-all-code");
+    if (hideAllCode) {
+      hideAllCode.addEventListener("click", toggleCodeHandler(false));
+    }
+    const showAllCode = window.document.getElementById("quarto-show-all-code");
+    if (showAllCode) {
+      showAllCode.addEventListener("click", toggleCodeHandler(true));
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script><div class="modal fade" id="quarto-embedded-source-code-modal" tabindex="-1" aria-labelledby="quarto-embedded-source-code-modal-label" aria-hidden="true"><div class="modal-dialog modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="quarto-embedded-source-code-modal-label">Source Code</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2" data-shortcodes="false"><pre class="sourceCode markdown code-with-copy"><code class="sourceCode markdown"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="an">title:</span><span class="co"> "Week 5: Linear Regression, Prediction &amp; Model Evaluation"</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="an">description:</span><span class="co"> "Features, least squares, regression output, train/test evaluation, cross validation, overfitting, and model assumptions."</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="an">date:</span><span class="co"> 2026-09-25</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="fu">## What We Did</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>This week, we started with the relationship between features and an outcome, then learned how linear regression fits data by least squares. We interpreted coefficients, standard errors, t-values, and p-values. We compared in-sample fit with out-of-sample prediction, evaluated models using a train/test split, RMSE, and cross validation, and discussed overfitting, feature selection, multicollinearity, and homoskedasticity.</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="fu">## Key Concepts</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>$Y$ is the outcome or target; $X$ represents the features or predictors used to explain or predict $Y$.</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Prediction focuses on the predicted value $\hat{Y}$, while inference focuses on estimated coefficients $\hat{\beta}$.</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Least squares minimizes the sum of squared residuals. Statistical significance does not establish practical importance or causation.</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>$R^2$ describes in-sample fit; test-set or cross-validation RMSE measures prediction error on unseen data.</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Select features based on out-of-sample prediction performance, while checking for overfitting, multicollinearity, and heteroskedasticity.</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a><span class="fu">## Note</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a><span class="fu">### 1. From Data to a Model: Features → $Y=f(X)+\epsilon$</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>Consider predicting rent. Each row is an observation, such as a census tract, and each column is a variable that describes it.</span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Variable <span class="pp">|</span> Meaning <span class="pp">|</span> Example <span class="pp">|</span></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|---|</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`GEOID`</span> <span class="pp">|</span> Geographic unit ID <span class="pp">|</span> 100 <span class="pp">|</span></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`med_rent`</span> <span class="pp">|</span> Median rent <span class="pp">|</span> \$1,650 <span class="pp">|</span></span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`med_inc`</span> <span class="pp">|</span> Median income <span class="pp">|</span> \$82,000 <span class="pp">|</span></span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`pct_renters`</span> <span class="pp">|</span> Share of residents who rent <span class="pp">|</span> 0.71 <span class="pp">|</span></span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`pct_ba`</span> <span class="pp">|</span> Share with a bachelor's degree or higher <span class="pp">|</span> 0.64 <span class="pp">|</span></span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`n_stations`</span> <span class="pp">|</span> Number of nearby transit stations <span class="pp">|</span> 3 <span class="pp">|</span></span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`rent_cv`</span> <span class="pp">|</span> Rent coefficient of variation <span class="pp">|</span> 9.8 <span class="pp">|</span></span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`geometry`</span> <span class="pp">|</span> Spatial geometry <span class="pp">|</span> polygon <span class="pp">|</span></span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Y / outcome / target:** The result we want to explain or predict, such as <span class="in">`rent`</span>.</span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**X / features / predictors:** Variables used to explain or predict Y, such as income, education, and transit access.</span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>In practical data analysis, *feature*, *variable*, *indicator*, and *column* often refer to similar ideas.</span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a>The central relationship is:</span>
+<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a>Y = f(X) + \epsilon</span>
+<span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-45"><a href="#cb2-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-46"><a href="#cb2-46" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>$f(X)$ is the real but unknown relationship between X and Y.</span>
+<span id="cb2-47"><a href="#cb2-47" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>$\epsilon$ is the part the model does not explain, including random error and omitted factors.</span>
+<span id="cb2-48"><a href="#cb2-48" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-49"><a href="#cb2-49" aria-hidden="true" tabindex="-1"></a>For example:</span>
+<span id="cb2-50"><a href="#cb2-50" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-51"><a href="#cb2-51" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-52"><a href="#cb2-52" aria-hidden="true" tabindex="-1"></a>Rent = f(Income) + \epsilon</span>
+<span id="cb2-53"><a href="#cb2-53" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-54"><a href="#cb2-54" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-55"><a href="#cb2-55" aria-hidden="true" tabindex="-1"></a>We use data to approximate the unknown $f(X)$.</span>
+<span id="cb2-56"><a href="#cb2-56" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-57"><a href="#cb2-57" aria-hidden="true" tabindex="-1"></a><span class="fu">### 2. Model Flexibility: Rigid → Flexible</span></span>
+<span id="cb2-58"><a href="#cb2-58" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-59"><a href="#cb2-59" aria-hidden="true" tabindex="-1"></a>Linear → Lasso / Ridge → Logistic → Trees → Random Forest → Boosting → Neural Networks</span>
+<span id="cb2-60"><a href="#cb2-60" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-61"><a href="#cb2-61" aria-hidden="true" tabindex="-1"></a>Models on the rigid end:</span>
+<span id="cb2-62"><a href="#cb2-62" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-63"><a href="#cb2-63" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Make stronger assumptions about the function's form.</span>
+<span id="cb2-64"><a href="#cb2-64" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Are usually easier to interpret.</span>
+<span id="cb2-65"><a href="#cb2-65" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Make inference about coefficients or slopes easier.</span>
+<span id="cb2-66"><a href="#cb2-66" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-67"><a href="#cb2-67" aria-hidden="true" tabindex="-1"></a>Models on the flexible end:</span>
+<span id="cb2-68"><a href="#cb2-68" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-69"><a href="#cb2-69" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Can learn nonlinear relationships and interactions.</span>
+<span id="cb2-70"><a href="#cb2-70" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Often capture complex patterns better.</span>
+<span id="cb2-71"><a href="#cb2-71" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Are usually harder to interpret and more prone to overfitting.</span>
+<span id="cb2-72"><a href="#cb2-72" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-73"><a href="#cb2-73" aria-hidden="true" tabindex="-1"></a>**Interpretability ↔ Flexibility**</span>
+<span id="cb2-74"><a href="#cb2-74" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-75"><a href="#cb2-75" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Parametric vs. Non-parametric</span></span>
+<span id="cb2-76"><a href="#cb2-76" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-77"><a href="#cb2-77" aria-hidden="true" tabindex="-1"></a>A **parametric model** assumes a functional form first, then estimates a finite number of parameters. For linear regression:</span>
+<span id="cb2-78"><a href="#cb2-78" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-79"><a href="#cb2-79" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-80"><a href="#cb2-80" aria-hidden="true" tabindex="-1"></a>f(X) = \beta_0 + \beta_1 X</span>
+<span id="cb2-81"><a href="#cb2-81" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-82"><a href="#cb2-82" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-83"><a href="#cb2-83" aria-hidden="true" tabindex="-1"></a>We only need to estimate $\beta_0$ and $\beta_1$.</span>
+<span id="cb2-84"><a href="#cb2-84" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-85"><a href="#cb2-85" aria-hidden="true" tabindex="-1"></a>A **non-parametric model** does not prescribe a fixed functional form in advance. It lets the model learn a more complex relationship from the data.</span>
+<span id="cb2-86"><a href="#cb2-86" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-87"><a href="#cb2-87" aria-hidden="true" tabindex="-1"></a>Non-parametric does not mean “without parameters.” The point is that a fixed functional form with a finite number of parameters was not specified in advance.</span>
+<span id="cb2-88"><a href="#cb2-88" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-89"><a href="#cb2-89" aria-hidden="true" tabindex="-1"></a><span class="fu">### 3. Linear Regression: Prediction vs. Inference</span></span>
+<span id="cb2-90"><a href="#cb2-90" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-91"><a href="#cb2-91" aria-hidden="true" tabindex="-1"></a>The linear regression model is:</span>
+<span id="cb2-92"><a href="#cb2-92" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-93"><a href="#cb2-93" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-94"><a href="#cb2-94" aria-hidden="true" tabindex="-1"></a>Y = \beta_0 + \beta_1 X + \epsilon</span>
+<span id="cb2-95"><a href="#cb2-95" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-96"><a href="#cb2-96" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-97"><a href="#cb2-97" aria-hidden="true" tabindex="-1"></a>After estimating it from a sample:</span>
+<span id="cb2-98"><a href="#cb2-98" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-99"><a href="#cb2-99" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-100"><a href="#cb2-100" aria-hidden="true" tabindex="-1"></a>\hat{Y} = \hat{\beta}_0 + \hat{\beta}_1 X</span>
+<span id="cb2-101"><a href="#cb2-101" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-102"><a href="#cb2-102" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-103"><a href="#cb2-103" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>$\beta_0$ is the intercept.</span>
+<span id="cb2-104"><a href="#cb2-104" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>$\beta_1$ is the coefficient or slope.</span>
+<span id="cb2-105"><a href="#cb2-105" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>$\hat{\beta}$ is a coefficient estimated from the sample.</span>
+<span id="cb2-106"><a href="#cb2-106" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>$\hat{Y}$ is the predicted value of Y.</span>
+<span id="cb2-107"><a href="#cb2-107" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-108"><a href="#cb2-108" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Prediction</span></span>
+<span id="cb2-109"><a href="#cb2-109" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-110"><a href="#cb2-110" aria-hidden="true" tabindex="-1"></a>What will Y be? The goal is for $\hat{Y}$ to be close to Y. The specific interpretation of each coefficient may not be the main concern.</span>
+<span id="cb2-111"><a href="#cb2-111" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-112"><a href="#cb2-112" aria-hidden="true" tabindex="-1"></a>**Prediction focuses on $\hat{Y}$.**</span>
+<span id="cb2-113"><a href="#cb2-113" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-114"><a href="#cb2-114" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Inference</span></span>
+<span id="cb2-115"><a href="#cb2-115" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-116"><a href="#cb2-116" aria-hidden="true" tabindex="-1"></a>What is the relationship between X and Y? The focus is on $\hat{\beta}$:</span>
+<span id="cb2-117"><a href="#cb2-117" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-118"><a href="#cb2-118" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Is the direction positive or negative?</span>
+<span id="cb2-119"><a href="#cb2-119" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>How large is the effect size?</span>
+<span id="cb2-120"><a href="#cb2-120" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Is there statistical evidence that the relationship differs from zero?</span>
+<span id="cb2-121"><a href="#cb2-121" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-122"><a href="#cb2-122" aria-hidden="true" tabindex="-1"></a>**Inference focuses on $\hat{\beta}$.**</span>
+<span id="cb2-123"><a href="#cb2-123" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-124"><a href="#cb2-124" aria-hidden="true" tabindex="-1"></a><span class="fu">### 4. Least Squares: How Is the Regression Line Found?</span></span>
+<span id="cb2-125"><a href="#cb2-125" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-126"><a href="#cb2-126" aria-hidden="true" tabindex="-1"></a>For observation $i$:</span>
+<span id="cb2-127"><a href="#cb2-127" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-128"><a href="#cb2-128" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Observed value: $y_i$.</span>
+<span id="cb2-129"><a href="#cb2-129" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Predicted value: $\hat{y}_i$.</span>
+<span id="cb2-130"><a href="#cb2-130" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Residual: $e_i = y_i - \hat{y}_i$.</span>
+<span id="cb2-131"><a href="#cb2-131" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-132"><a href="#cb2-132" aria-hidden="true" tabindex="-1"></a>Positive and negative residuals can cancel when added directly, so we square the errors and add them:</span>
+<span id="cb2-133"><a href="#cb2-133" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-134"><a href="#cb2-134" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-135"><a href="#cb2-135" aria-hidden="true" tabindex="-1"></a>RSS = \sum_{i=1}^{n}(y_i - \hat{y}_i)^2</span>
+<span id="cb2-136"><a href="#cb2-136" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-137"><a href="#cb2-137" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-138"><a href="#cb2-138" aria-hidden="true" tabindex="-1"></a>The least-squares objective is:</span>
+<span id="cb2-139"><a href="#cb2-139" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-140"><a href="#cb2-140" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-141"><a href="#cb2-141" aria-hidden="true" tabindex="-1"></a>\min_{\beta_0,\beta_1}\sum_{i=1}^{n}<span class="co">[</span><span class="ot">y_i-(\beta_0+\beta_1 x_i)</span><span class="co">]</span>^2</span>
+<span id="cb2-142"><a href="#cb2-142" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-143"><a href="#cb2-143" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-144"><a href="#cb2-144" aria-hidden="true" tabindex="-1"></a>That is, find $\hat{\beta}_0$ and $\hat{\beta}_1$ that minimize the sum of the squared vertical distances from the data points to the regression line.</span>
+<span id="cb2-145"><a href="#cb2-145" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-146"><a href="#cb2-146" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-147"><a href="#cb2-147" aria-hidden="true" tabindex="-1"></a>Y=f(X)+\epsilon \rightarrow Y=\beta_0+\beta_1X+\epsilon</span>
+<span id="cb2-148"><a href="#cb2-148" aria-hidden="true" tabindex="-1"></a>\rightarrow \text{Least Squares}</span>
+<span id="cb2-149"><a href="#cb2-149" aria-hidden="true" tabindex="-1"></a>\rightarrow \hat{Y}=\hat{\beta}_0+\hat{\beta}_1X</span>
+<span id="cb2-150"><a href="#cb2-150" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-151"><a href="#cb2-151" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-152"><a href="#cb2-152" aria-hidden="true" tabindex="-1"></a><span class="fu">### 5. Reading Linear Regression Output in R</span></span>
+<span id="cb2-153"><a href="#cb2-153" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-154"><a href="#cb2-154" aria-hidden="true" tabindex="-1"></a>Class example:</span>
+<span id="cb2-155"><a href="#cb2-155" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-156"><a href="#cb2-156" aria-hidden="true" tabindex="-1"></a><span class="in">~~~r</span></span>
+<span id="cb2-157"><a href="#cb2-157" aria-hidden="true" tabindex="-1"></a>m1 <span class="ot">&lt;-</span> <span class="fu">lm</span>(med_rent <span class="sc">~</span> med_inc, <span class="at">data =</span> tracts)</span>
+<span id="cb2-158"><a href="#cb2-158" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(m1)</span>
+<span id="cb2-159"><a href="#cb2-159" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb2-160"><a href="#cb2-160" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-161"><a href="#cb2-161" aria-hidden="true" tabindex="-1"></a>The output is approximately:</span>
+<span id="cb2-162"><a href="#cb2-162" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-163"><a href="#cb2-163" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span>  <span class="pp">|</span> Estimate <span class="pp">|</span> S.E. <span class="pp">|</span> t-value <span class="pp">|</span> p-value <span class="pp">|</span></span>
+<span id="cb2-164"><a href="#cb2-164" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---:|---:|---:|---|</span></span>
+<span id="cb2-165"><a href="#cb2-165" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Intercept <span class="pp">|</span> 690.0 <span class="pp">|</span> 38.0 <span class="pp">|</span> 18.2 <span class="pp">|</span> &lt; 2e-16 <span class="pp">|</span></span>
+<span id="cb2-166"><a href="#cb2-166" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`med_inc`</span> <span class="pp">|</span> 0.0081 <span class="pp">|</span> 0.0005 <span class="pp">|</span> 16.2 <span class="pp">|</span> &lt; 2e-16 <span class="pp">|</span></span>
+<span id="cb2-167"><a href="#cb2-167" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-168"><a href="#cb2-168" aria-hidden="true" tabindex="-1"></a>The fitted model is:</span>
+<span id="cb2-169"><a href="#cb2-169" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-170"><a href="#cb2-170" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-171"><a href="#cb2-171" aria-hidden="true" tabindex="-1"></a>\widehat{Rent}=690+0.0081\times Income</span>
+<span id="cb2-172"><a href="#cb2-172" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-173"><a href="#cb2-173" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-174"><a href="#cb2-174" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Estimate</span></span>
+<span id="cb2-175"><a href="#cb2-175" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-176"><a href="#cb2-176" aria-hidden="true" tabindex="-1"></a>The units of $\hat{\beta}_1=0.0081$ are:</span>
+<span id="cb2-177"><a href="#cb2-177" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-178"><a href="#cb2-178" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-179"><a href="#cb2-179" aria-hidden="true" tabindex="-1"></a>\frac{\text{dollars of monthly rent}}{\text{dollar of annual income}}</span>
+<span id="cb2-180"><a href="#cb2-180" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-181"><a href="#cb2-181" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-182"><a href="#cb2-182" aria-hidden="true" tabindex="-1"></a>For a \$10,000 increase in annual income:</span>
+<span id="cb2-183"><a href="#cb2-183" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-184"><a href="#cb2-184" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-185"><a href="#cb2-185" aria-hidden="true" tabindex="-1"></a>0.0081\times 10{,}000=81</span>
+<span id="cb2-186"><a href="#cb2-186" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-187"><a href="#cb2-187" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-188"><a href="#cb2-188" aria-hidden="true" tabindex="-1"></a>Interpretation: for each \$10,000 increase in annual income, predicted monthly rent rises by about \$81 on average.</span>
+<span id="cb2-189"><a href="#cb2-189" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-190"><a href="#cb2-190" aria-hidden="true" tabindex="-1"></a>This is an association or predicted difference. This regression alone does not show that income causes rent to rise.</span>
+<span id="cb2-191"><a href="#cb2-191" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-192"><a href="#cb2-192" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Standard Error (S.E.)</span></span>
+<span id="cb2-193"><a href="#cb2-193" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-194"><a href="#cb2-194" aria-hidden="true" tabindex="-1"></a>The standard error measures uncertainty in a coefficient estimate.</span>
+<span id="cb2-195"><a href="#cb2-195" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-196"><a href="#cb2-196" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Smaller SE → a more precise coefficient estimate.</span>
+<span id="cb2-197"><a href="#cb2-197" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Larger SE → a less certain coefficient estimate.</span>
+<span id="cb2-198"><a href="#cb2-198" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-199"><a href="#cb2-199" aria-hidden="true" tabindex="-1"></a>It is not the prediction error for each observation.</span>
+<span id="cb2-200"><a href="#cb2-200" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-201"><a href="#cb2-201" aria-hidden="true" tabindex="-1"></a><span class="fu">#### t-value</span></span>
+<span id="cb2-202"><a href="#cb2-202" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-203"><a href="#cb2-203" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-204"><a href="#cb2-204" aria-hidden="true" tabindex="-1"></a>t=\frac{Estimate}{Standard\ Error}</span>
+<span id="cb2-205"><a href="#cb2-205" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-206"><a href="#cb2-206" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-207"><a href="#cb2-207" aria-hidden="true" tabindex="-1"></a>Here:</span>
+<span id="cb2-208"><a href="#cb2-208" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-209"><a href="#cb2-209" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-210"><a href="#cb2-210" aria-hidden="true" tabindex="-1"></a>t=\frac{0.0081}{0.0005}\approx16.2</span>
+<span id="cb2-211"><a href="#cb2-211" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-212"><a href="#cb2-212" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-213"><a href="#cb2-213" aria-hidden="true" tabindex="-1"></a>We test $H_0:\beta_1=0$. In class, $|t|&gt;1.96$ was used as an approximate reference for a large-sample, two-sided 5% test.</span>
+<span id="cb2-214"><a href="#cb2-214" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-215"><a href="#cb2-215" aria-hidden="true" tabindex="-1"></a><span class="fu">#### p-value</span></span>
+<span id="cb2-216"><a href="#cb2-216" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-217"><a href="#cb2-217" aria-hidden="true" tabindex="-1"></a>Here, $p&lt;2\times10^{-16}$. If $H_0:\beta_1=0$ and the model assumptions hold, the probability of observing a test statistic this extreme or more extreme is very small.</span>
+<span id="cb2-218"><a href="#cb2-218" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-219"><a href="#cb2-219" aria-hidden="true" tabindex="-1"></a>We can therefore reject $H_0$: the data provide strong statistical evidence of a linear association between income and rent.</span>
+<span id="cb2-220"><a href="#cb2-220" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-221"><a href="#cb2-221" aria-hidden="true" tabindex="-1"></a><span class="at">&gt; Statistically significant ≠ practically important ≠ causal.</span></span>
+<span id="cb2-222"><a href="#cb2-222" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-223"><a href="#cb2-223" aria-hidden="true" tabindex="-1"></a>**Estimate → SE → t → p**</span>
+<span id="cb2-224"><a href="#cb2-224" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-225"><a href="#cb2-225" aria-hidden="true" tabindex="-1"></a><span class="fu">### 6. Noise in Y vs. Noise in X</span></span>
+<span id="cb2-226"><a href="#cb2-226" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-227"><a href="#cb2-227" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Noise in Y → Residuals</span></span>
+<span id="cb2-228"><a href="#cb2-228" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-229"><a href="#cb2-229" aria-hidden="true" tabindex="-1"></a>Random variation in Y and factors the model does not explain appear in the residuals:</span>
+<span id="cb2-230"><a href="#cb2-230" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-231"><a href="#cb2-231" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-232"><a href="#cb2-232" aria-hidden="true" tabindex="-1"></a>Observed\ Y=Predicted\ Y+Residual</span>
+<span id="cb2-233"><a href="#cb2-233" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-234"><a href="#cb2-234" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-235"><a href="#cb2-235" aria-hidden="true" tabindex="-1"></a>But residuals are not necessarily all random noise:</span>
+<span id="cb2-236"><a href="#cb2-236" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-237"><a href="#cb2-237" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-238"><a href="#cb2-238" aria-hidden="true" tabindex="-1"></a>Residual=Random\ Noise+Unmodeled\ Systematic\ Variation</span>
+<span id="cb2-239"><a href="#cb2-239" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-240"><a href="#cb2-240" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-241"><a href="#cb2-241" aria-hidden="true" tabindex="-1"></a>For example, suppose transit accessibility affects rent but the model only includes income. Variation due to transit will enter the residuals, even though it is systematic variation rather than purely random noise.</span>
+<span id="cb2-242"><a href="#cb2-242" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-243"><a href="#cb2-243" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Noise in X → Flattens the Slope</span></span>
+<span id="cb2-244"><a href="#cb2-244" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-245"><a href="#cb2-245" aria-hidden="true" tabindex="-1"></a>If the predictor has measurement error:</span>
+<span id="cb2-246"><a href="#cb2-246" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-247"><a href="#cb2-247" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-248"><a href="#cb2-248" aria-hidden="true" tabindex="-1"></a>X_{observed}=X_{true}+noise</span>
+<span id="cb2-249"><a href="#cb2-249" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-250"><a href="#cb2-250" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-251"><a href="#cb2-251" aria-hidden="true" tabindex="-1"></a>Under classical random measurement-error conditions, the estimated slope is usually pulled toward zero: $|\hat{\beta}_1|\downarrow$. This is called **attenuation bias**.</span>
+<span id="cb2-252"><a href="#cb2-252" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-253"><a href="#cb2-253" aria-hidden="true" tabindex="-1"></a><span class="fu">### 7. Fit vs. Prediction</span></span>
+<span id="cb2-254"><a href="#cb2-254" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-255"><a href="#cb2-255" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Model Fit</span></span>
+<span id="cb2-256"><a href="#cb2-256" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-257"><a href="#cb2-257" aria-hidden="true" tabindex="-1"></a>A common fit measure is $R^2$.</span>
+<span id="cb2-258"><a href="#cb2-258" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-259"><a href="#cb2-259" aria-hidden="true" tabindex="-1"></a>In this class, $R^2$ describes how well the model fits the data used to estimate it: its in-sample fit. For example, $R^2=0.70$ means the model explains about 70% of the variation in Y within the sample.</span>
+<span id="cb2-260"><a href="#cb2-260" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-261"><a href="#cb2-261" aria-hidden="true" tabindex="-1"></a><span class="at">&gt; Good fit ≠ good prediction.</span></span>
+<span id="cb2-262"><a href="#cb2-262" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-263"><a href="#cb2-263" aria-hidden="true" tabindex="-1"></a>A model can fit the training data well yet predict new data poorly.</span>
+<span id="cb2-264"><a href="#cb2-264" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-265"><a href="#cb2-265" aria-hidden="true" tabindex="-1"></a><span class="fu">### 8. Train / Test Split</span></span>
+<span id="cb2-266"><a href="#cb2-266" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-267"><a href="#cb2-267" aria-hidden="true" tabindex="-1"></a>A typical split is 80% training and 20% test data.</span>
+<span id="cb2-268"><a href="#cb2-268" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-269"><a href="#cb2-269" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Training set:** Used to fit the model.</span>
+<span id="cb2-270"><a href="#cb2-270" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Test set:** Kept entirely out of training and used to evaluate prediction on unseen data.</span>
+<span id="cb2-271"><a href="#cb2-271" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-272"><a href="#cb2-272" aria-hidden="true" tabindex="-1"></a>Fit the model on the training set, use $X_{test}$ to generate $\hat{Y}_{test}$, and compare actual Y with predicted $\hat{Y}$.</span>
+<span id="cb2-273"><a href="#cb2-273" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-274"><a href="#cb2-274" aria-hidden="true" tabindex="-1"></a><span class="fu">### 9. RMSE: Evaluating Prediction Error</span></span>
+<span id="cb2-275"><a href="#cb2-275" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-276"><a href="#cb2-276" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-277"><a href="#cb2-277" aria-hidden="true" tabindex="-1"></a>RMSE=\sqrt{\frac{1}{n}\sum_{i=1}^{n}(y_i-\hat{y}_i)^2}</span>
+<span id="cb2-278"><a href="#cb2-278" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-279"><a href="#cb2-279" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-280"><a href="#cb2-280" aria-hidden="true" tabindex="-1"></a>Calculation steps:</span>
+<span id="cb2-281"><a href="#cb2-281" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-282"><a href="#cb2-282" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>Subtract predicted values from actual values.</span>
+<span id="cb2-283"><a href="#cb2-283" aria-hidden="true" tabindex="-1"></a><span class="ss">2. </span>Square the errors.</span>
+<span id="cb2-284"><a href="#cb2-284" aria-hidden="true" tabindex="-1"></a><span class="ss">3. </span>Take their mean.</span>
+<span id="cb2-285"><a href="#cb2-285" aria-hidden="true" tabindex="-1"></a><span class="ss">4. </span>Take the square root.</span>
+<span id="cb2-286"><a href="#cb2-286" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-287"><a href="#cb2-287" aria-hidden="true" tabindex="-1"></a>Example:</span>
+<span id="cb2-288"><a href="#cb2-288" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-289"><a href="#cb2-289" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Observation 1: $500-400=100\rightarrow100^2=10{,}000$.</span>
+<span id="cb2-290"><a href="#cb2-290" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Observation 2: $900-1200=-300\rightarrow(-300)^2=90{,}000$.</span>
+<span id="cb2-291"><a href="#cb2-291" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-292"><a href="#cb2-292" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-293"><a href="#cb2-293" aria-hidden="true" tabindex="-1"></a>MSE=\frac{10{,}000+90{,}000}{2}=50{,}000</span>
+<span id="cb2-294"><a href="#cb2-294" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-295"><a href="#cb2-295" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-296"><a href="#cb2-296" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-297"><a href="#cb2-297" aria-hidden="true" tabindex="-1"></a>RMSE=\sqrt{50{,}000}\approx223.6</span>
+<span id="cb2-298"><a href="#cb2-298" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-299"><a href="#cb2-299" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-300"><a href="#cb2-300" aria-hidden="true" tabindex="-1"></a>If Y is monthly rent, RMSE is approximately \$224 per month.</span>
+<span id="cb2-301"><a href="#cb2-301" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-302"><a href="#cb2-302" aria-hidden="true" tabindex="-1"></a>RMSE is easy to interpret because taking the square root returns it to the original units of Y. **Lower RMSE is better.**</span>
+<span id="cb2-303"><a href="#cb2-303" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-304"><a href="#cb2-304" aria-hidden="true" tabindex="-1"></a><span class="fu">#### $R^2$ vs. RMSE</span></span>
+<span id="cb2-305"><a href="#cb2-305" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-306"><a href="#cb2-306" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span>  <span class="pp">|</span> $R^2$ <span class="pp">|</span> RMSE <span class="pp">|</span></span>
+<span id="cb2-307"><a href="#cb2-307" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|---|</span></span>
+<span id="cb2-308"><a href="#cb2-308" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> What it mainly measures <span class="pp">|</span> Model fit <span class="pp">|</span> Prediction error <span class="pp">|</span></span>
+<span id="cb2-309"><a href="#cb2-309" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Class emphasis <span class="pp">|</span> Training / fitted data <span class="pp">|</span> Test / unseen data <span class="pp">|</span></span>
+<span id="cb2-310"><a href="#cb2-310" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Units <span class="pp">|</span> Unitless <span class="pp">|</span> Same as Y <span class="pp">|</span></span>
+<span id="cb2-311"><a href="#cb2-311" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Better direction <span class="pp">|</span> Higher <span class="pp">|</span> Lower <span class="pp">|</span></span>
+<span id="cb2-312"><a href="#cb2-312" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-313"><a href="#cb2-313" aria-hidden="true" tabindex="-1"></a><span class="fu">### 10. Cross Validation (CV)</span></span>
+<span id="cb2-314"><a href="#cb2-314" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-315"><a href="#cb2-315" aria-hidden="true" tabindex="-1"></a>A single train/test split can be affected by chance: the result may depend on which observations happened to enter the test set. K-fold cross validation addresses this concern.</span>
+<span id="cb2-316"><a href="#cb2-316" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-317"><a href="#cb2-317" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 5-Fold CV</span></span>
+<span id="cb2-318"><a href="#cb2-318" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-319"><a href="#cb2-319" aria-hidden="true" tabindex="-1"></a>Suppose there are 100 records, divided into five groups of 20. In each round:</span>
+<span id="cb2-320"><a href="#cb2-320" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-321"><a href="#cb2-321" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Four folds are used for training.</span>
+<span id="cb2-322"><a href="#cb2-322" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>One fold is used for testing.</span>
+<span id="cb2-323"><a href="#cb2-323" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Each fold takes a turn as the test set.</span>
+<span id="cb2-324"><a href="#cb2-324" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-325"><a href="#cb2-325" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Round <span class="pp">|</span> Training <span class="pp">|</span> Test <span class="pp">|</span></span>
+<span id="cb2-326"><a href="#cb2-326" aria-hidden="true" tabindex="-1"></a><span class="pp">|---:|---|---|</span></span>
+<span id="cb2-327"><a href="#cb2-327" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 1 <span class="pp">|</span> Folds 2–5 <span class="pp">|</span> Fold 1 <span class="pp">|</span></span>
+<span id="cb2-328"><a href="#cb2-328" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 2 <span class="pp">|</span> Folds 1, 3–5 <span class="pp">|</span> Fold 2 <span class="pp">|</span></span>
+<span id="cb2-329"><a href="#cb2-329" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 3 <span class="pp">|</span> Folds 1–2, 4–5 <span class="pp">|</span> Fold 3 <span class="pp">|</span></span>
+<span id="cb2-330"><a href="#cb2-330" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 4 <span class="pp">|</span> Folds 1–3, 5 <span class="pp">|</span> Fold 4 <span class="pp">|</span></span>
+<span id="cb2-331"><a href="#cb2-331" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 5 <span class="pp">|</span> Folds 1–4 <span class="pp">|</span> Fold 5 <span class="pp">|</span></span>
+<span id="cb2-332"><a href="#cb2-332" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-333"><a href="#cb2-333" aria-hidden="true" tabindex="-1"></a>This produces $RMSE_1,RMSE_2,RMSE_3,RMSE_4,RMSE_5$. One way to combine the results is:</span>
+<span id="cb2-334"><a href="#cb2-334" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-335"><a href="#cb2-335" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-336"><a href="#cb2-336" aria-hidden="true" tabindex="-1"></a>CV\ RMSE=\frac{RMSE_1+\cdots+RMSE_5}{5}</span>
+<span id="cb2-337"><a href="#cb2-337" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-338"><a href="#cb2-338" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-339"><a href="#cb2-339" aria-hidden="true" tabindex="-1"></a>The central goal of CV is to evaluate generalization to unseen data.</span>
+<span id="cb2-340"><a href="#cb2-340" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-341"><a href="#cb2-341" aria-hidden="true" tabindex="-1"></a><span class="fu">### 11. Overfitting</span></span>
+<span id="cb2-342"><a href="#cb2-342" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-343"><a href="#cb2-343" aria-hidden="true" tabindex="-1"></a>Class summary: **Overfitting = learned the noise!**</span>
+<span id="cb2-344"><a href="#cb2-344" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-345"><a href="#cb2-345" aria-hidden="true" tabindex="-1"></a>Ideally, a model learns $f(X)$. An excessively flexible model may learn both the signal and the noise.</span>
+<span id="cb2-346"><a href="#cb2-346" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-347"><a href="#cb2-347" aria-hidden="true" tabindex="-1"></a>A typical pattern is $RMSE_{train}\downarrow$ while $RMSE_{test}\uparrow$.</span>
+<span id="cb2-348"><a href="#cb2-348" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-349"><a href="#cb2-349" aria-hidden="true" tabindex="-1"></a><span class="at">&gt; Excellent training fit ≠ good prediction.</span></span>
+<span id="cb2-350"><a href="#cb2-350" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-351"><a href="#cb2-351" aria-hidden="true" tabindex="-1"></a>Cross validation helps identify overfitting because each round requires the model to predict data it did not see during that round's training.</span>
+<span id="cb2-352"><a href="#cb2-352" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-353"><a href="#cb2-353" aria-hidden="true" tabindex="-1"></a><span class="fu">### 12. How to Pick Features?</span></span>
+<span id="cb2-354"><a href="#cb2-354" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-355"><a href="#cb2-355" aria-hidden="true" tabindex="-1"></a>If the goal is prediction, feature selection should not be based only on:</span>
+<span id="cb2-356"><a href="#cb2-356" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-357"><a href="#cb2-357" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>The highest training $R^2$.</span>
+<span id="cb2-358"><a href="#cb2-358" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>The smallest p-value.</span>
+<span id="cb2-359"><a href="#cb2-359" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>The largest number of features.</span>
+<span id="cb2-360"><a href="#cb2-360" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-361"><a href="#cb2-361" aria-hidden="true" tabindex="-1"></a>The question is: **Which features produce the best predictions on unseen data?**</span>
+<span id="cb2-362"><a href="#cb2-362" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-363"><a href="#cb2-363" aria-hidden="true" tabindex="-1"></a>For example:</span>
+<span id="cb2-364"><a href="#cb2-364" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-365"><a href="#cb2-365" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-366"><a href="#cb2-366" aria-hidden="true" tabindex="-1"></a>M_1: Rent\sim Income</span>
+<span id="cb2-367"><a href="#cb2-367" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-368"><a href="#cb2-368" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-369"><a href="#cb2-369" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-370"><a href="#cb2-370" aria-hidden="true" tabindex="-1"></a>M_2: Rent\sim Income+Education</span>
+<span id="cb2-371"><a href="#cb2-371" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-372"><a href="#cb2-372" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-373"><a href="#cb2-373" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-374"><a href="#cb2-374" aria-hidden="true" tabindex="-1"></a>M_3: Rent\sim Income+Education+Stations</span>
+<span id="cb2-375"><a href="#cb2-375" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-376"><a href="#cb2-376" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-377"><a href="#cb2-377" aria-hidden="true" tabindex="-1"></a>Compare their CV RMSE:</span>
+<span id="cb2-378"><a href="#cb2-378" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-379"><a href="#cb2-379" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Model <span class="pp">|</span> Features <span class="pp">|</span> CV RMSE <span class="pp">|</span></span>
+<span id="cb2-380"><a href="#cb2-380" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|---:|</span></span>
+<span id="cb2-381"><a href="#cb2-381" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> M1 <span class="pp">|</span> Income <span class="pp">|</span> \$320 <span class="pp">|</span></span>
+<span id="cb2-382"><a href="#cb2-382" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> M2 <span class="pp">|</span> Income + Education <span class="pp">|</span> \$270 <span class="pp">|</span></span>
+<span id="cb2-383"><a href="#cb2-383" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> M3 <span class="pp">|</span> Income + Education + Stations <span class="pp">|</span> \$285 <span class="pp">|</span></span>
+<span id="cb2-384"><a href="#cb2-384" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-385"><a href="#cb2-385" aria-hidden="true" tabindex="-1"></a>M2 has the best out-of-sample prediction here because it has the lowest RMSE.</span>
+<span id="cb2-386"><a href="#cb2-386" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-387"><a href="#cb2-387" aria-hidden="true" tabindex="-1"></a>After adding a feature:</span>
+<span id="cb2-388"><a href="#cb2-388" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-389"><a href="#cb2-389" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>If RMSE falls, the feature helps prediction.</span>
+<span id="cb2-390"><a href="#cb2-390" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>If RMSE rises, complexity has increased while generalization has worsened; the feature may not be worth adding.</span>
+<span id="cb2-391"><a href="#cb2-391" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-392"><a href="#cb2-392" aria-hidden="true" tabindex="-1"></a>**Pick features by out-of-sample prediction performance.**</span>
+<span id="cb2-393"><a href="#cb2-393" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-394"><a href="#cb2-394" aria-hidden="true" tabindex="-1"></a><span class="fu">### 13. Multicollinearity</span></span>
+<span id="cb2-395"><a href="#cb2-395" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-396"><a href="#cb2-396" aria-hidden="true" tabindex="-1"></a>Multicollinearity means that multiple predictors are strongly correlated. Median income and per-capita income, for example, might have $Corr(X_1,X_2)\approx0.90$.</span>
+<span id="cb2-397"><a href="#cb2-397" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-398"><a href="#cb2-398" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Effect on Inference</span></span>
+<span id="cb2-399"><a href="#cb2-399" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-400"><a href="#cb2-400" aria-hidden="true" tabindex="-1"></a>The effects are more pronounced for inference:</span>
+<span id="cb2-401"><a href="#cb2-401" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-402"><a href="#cb2-402" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Coefficients become unstable.</span>
+<span id="cb2-403"><a href="#cb2-403" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Standard errors increase.</span>
+<span id="cb2-404"><a href="#cb2-404" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Coefficients can become sensitive to model specification.</span>
+<span id="cb2-405"><a href="#cb2-405" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-406"><a href="#cb2-406" aria-hidden="true" tabindex="-1"></a>The model has difficulty distinguishing which X explains Y.</span>
+<span id="cb2-407"><a href="#cb2-407" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-408"><a href="#cb2-408" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Effect on Prediction</span></span>
+<span id="cb2-409"><a href="#cb2-409" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-410"><a href="#cb2-410" aria-hidden="true" tabindex="-1"></a><span class="at">&gt; Mostly harmless, but check your prediction.</span></span>
+<span id="cb2-411"><a href="#cb2-411" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-412"><a href="#cb2-412" aria-hidden="true" tabindex="-1"></a>If the goal is prediction, highly correlated predictors do not necessarily have to be removed. Check CV or test RMSE. If out-of-sample prediction has not worsened, multicollinearity alone is not enough to call the model poor.</span>
+<span id="cb2-413"><a href="#cb2-413" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-414"><a href="#cb2-414" aria-hidden="true" tabindex="-1"></a><span class="fu">### 14. Homoskedasticity</span></span>
+<span id="cb2-415"><a href="#cb2-415" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-416"><a href="#cb2-416" aria-hidden="true" tabindex="-1"></a>One important assumption of linear regression is:</span>
+<span id="cb2-417"><a href="#cb2-417" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-418"><a href="#cb2-418" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-419"><a href="#cb2-419" aria-hidden="true" tabindex="-1"></a>Var(\epsilon\mid X)=\sigma^2</span>
+<span id="cb2-420"><a href="#cb2-420" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb2-421"><a href="#cb2-421" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-422"><a href="#cb2-422" aria-hidden="true" tabindex="-1"></a>This means that the variance of the residuals stays approximately constant across different levels of X.</span>
+<span id="cb2-423"><a href="#cb2-423" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-424"><a href="#cb2-424" aria-hidden="true" tabindex="-1"></a>If the residuals spread out more as X increases, the pattern is called **heteroskedasticity**. It mainly affects inference:</span>
+<span id="cb2-425"><a href="#cb2-425" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-426"><a href="#cb2-426" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>The coefficient itself is not necessarily biased as a result.</span>
+<span id="cb2-427"><a href="#cb2-427" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Conventional standard errors may be unreliable.</span>
+<span id="cb2-428"><a href="#cb2-428" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>This, in turn, affects t-values and p-values.</span>
+<span id="cb2-429"><a href="#cb2-429" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-430"><a href="#cb2-430" aria-hidden="true" tabindex="-1"></a>The sequence is: Estimate → SE → t → p.</span>
+<span id="cb2-431"><a href="#cb2-431" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-432"><a href="#cb2-432" aria-hidden="true" tabindex="-1"></a>In practice, analysts often use heteroskedasticity-robust standard errors.</span>
+<span id="cb2-433"><a href="#cb2-433" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-434"><a href="#cb2-434" aria-hidden="true" tabindex="-1"></a><span class="fu">## Proving R Works</span></span>
+<span id="cb2-435"><a href="#cb2-435" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-436"><a href="#cb2-436" aria-hidden="true" tabindex="-1"></a><span class="in">~~~{r}</span></span>
+<span id="cb2-437"><a href="#cb2-437" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: session-info</span></span>
+<span id="cb2-438"><a href="#cb2-438" aria-hidden="true" tabindex="-1"></a><span class="co">#| echo: true</span></span>
+<span id="cb2-439"><a href="#cb2-439" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-440"><a href="#cb2-440" aria-hidden="true" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span>
+<span id="cb2-441"><a href="#cb2-441" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb2-442"><a href="#cb2-442" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-443"><a href="#cb2-443" aria-hidden="true" tabindex="-1"></a><span class="fu">## Reflection</span></span>
+<span id="cb2-444"><a href="#cb2-444" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-445"><a href="#cb2-445" aria-hidden="true" tabindex="-1"></a>The central reminder from this week's note is to evaluate training fit and prediction on new data separately. When interpreting coefficients, it is also important to distinguish statistical association from practical importance and causation, and to check the model assumptions behind standard errors.</span>
+<span id="cb2-446"><a href="#cb2-446" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-447"><a href="#cb2-447" aria-hidden="true" tabindex="-1"></a><span class="fu">## Questions I Still Have</span></span>
+<span id="cb2-448"><a href="#cb2-448" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-449"><a href="#cb2-449" aria-hidden="true" tabindex="-1"></a>None.</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></div>
+</div></div></div></div></div>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

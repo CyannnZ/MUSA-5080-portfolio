@@ -1,0 +1,449 @@
+---
+title: "Week 5: Linear Regression, Prediction & Model Evaluation"
+description: "Features, least squares, regression output, train/test evaluation, cross validation, overfitting, and model assumptions."
+date: 2026-09-25
+---
+
+## What We Did
+
+This week, we started with the relationship between features and an outcome, then learned how linear regression fits data by least squares. We interpreted coefficients, standard errors, t-values, and p-values. We compared in-sample fit with out-of-sample prediction, evaluated models using a train/test split, RMSE, and cross validation, and discussed overfitting, feature selection, multicollinearity, and homoskedasticity.
+
+## Key Concepts
+
+- $Y$ is the outcome or target; $X$ represents the features or predictors used to explain or predict $Y$.
+- Prediction focuses on the predicted value $\hat{Y}$, while inference focuses on estimated coefficients $\hat{\beta}$.
+- Least squares minimizes the sum of squared residuals. Statistical significance does not establish practical importance or causation.
+- $R^2$ describes in-sample fit; test-set or cross-validation RMSE measures prediction error on unseen data.
+- Select features based on out-of-sample prediction performance, while checking for overfitting, multicollinearity, and heteroskedasticity.
+
+## Note
+
+### 1. From Data to a Model: Features → $Y=f(X)+\epsilon$
+
+Consider predicting rent. Each row is an observation, such as a census tract, and each column is a variable that describes it.
+
+| Variable | Meaning | Example |
+|---|---|---|
+| `GEOID` | Geographic unit ID | 100 |
+| `med_rent` | Median rent | \$1,650 |
+| `med_inc` | Median income | \$82,000 |
+| `pct_renters` | Share of residents who rent | 0.71 |
+| `pct_ba` | Share with a bachelor's degree or higher | 0.64 |
+| `n_stations` | Number of nearby transit stations | 3 |
+| `rent_cv` | Rent coefficient of variation | 9.8 |
+| `geometry` | Spatial geometry | polygon |
+
+- **Y / outcome / target:** The result we want to explain or predict, such as `rent`.
+- **X / features / predictors:** Variables used to explain or predict Y, such as income, education, and transit access.
+- In practical data analysis, *feature*, *variable*, *indicator*, and *column* often refer to similar ideas.
+
+The central relationship is:
+
+$$
+Y = f(X) + \epsilon
+$$
+
+- $f(X)$ is the real but unknown relationship between X and Y.
+- $\epsilon$ is the part the model does not explain, including random error and omitted factors.
+
+For example:
+
+$$
+Rent = f(Income) + \epsilon
+$$
+
+We use data to approximate the unknown $f(X)$.
+
+### 2. Model Flexibility: Rigid → Flexible
+
+Linear → Lasso / Ridge → Logistic → Trees → Random Forest → Boosting → Neural Networks
+
+Models on the rigid end:
+
+- Make stronger assumptions about the function's form.
+- Are usually easier to interpret.
+- Make inference about coefficients or slopes easier.
+
+Models on the flexible end:
+
+- Can learn nonlinear relationships and interactions.
+- Often capture complex patterns better.
+- Are usually harder to interpret and more prone to overfitting.
+
+**Interpretability ↔ Flexibility**
+
+#### Parametric vs. Non-parametric
+
+A **parametric model** assumes a functional form first, then estimates a finite number of parameters. For linear regression:
+
+$$
+f(X) = \beta_0 + \beta_1 X
+$$
+
+We only need to estimate $\beta_0$ and $\beta_1$.
+
+A **non-parametric model** does not prescribe a fixed functional form in advance. It lets the model learn a more complex relationship from the data.
+
+Non-parametric does not mean “without parameters.” The point is that a fixed functional form with a finite number of parameters was not specified in advance.
+
+### 3. Linear Regression: Prediction vs. Inference
+
+The linear regression model is:
+
+$$
+Y = \beta_0 + \beta_1 X + \epsilon
+$$
+
+After estimating it from a sample:
+
+$$
+\hat{Y} = \hat{\beta}_0 + \hat{\beta}_1 X
+$$
+
+- $\beta_0$ is the intercept.
+- $\beta_1$ is the coefficient or slope.
+- $\hat{\beta}$ is a coefficient estimated from the sample.
+- $\hat{Y}$ is the predicted value of Y.
+
+#### Prediction
+
+What will Y be? The goal is for $\hat{Y}$ to be close to Y. The specific interpretation of each coefficient may not be the main concern.
+
+**Prediction focuses on $\hat{Y}$.**
+
+#### Inference
+
+What is the relationship between X and Y? The focus is on $\hat{\beta}$:
+
+- Is the direction positive or negative?
+- How large is the effect size?
+- Is there statistical evidence that the relationship differs from zero?
+
+**Inference focuses on $\hat{\beta}$.**
+
+### 4. Least Squares: How Is the Regression Line Found?
+
+For observation $i$:
+
+- Observed value: $y_i$.
+- Predicted value: $\hat{y}_i$.
+- Residual: $e_i = y_i - \hat{y}_i$.
+
+Positive and negative residuals can cancel when added directly, so we square the errors and add them:
+
+$$
+RSS = \sum_{i=1}^{n}(y_i - \hat{y}_i)^2
+$$
+
+The least-squares objective is:
+
+$$
+\min_{\beta_0,\beta_1}\sum_{i=1}^{n}[y_i-(\beta_0+\beta_1 x_i)]^2
+$$
+
+That is, find $\hat{\beta}_0$ and $\hat{\beta}_1$ that minimize the sum of the squared vertical distances from the data points to the regression line.
+
+$$
+Y=f(X)+\epsilon \rightarrow Y=\beta_0+\beta_1X+\epsilon
+\rightarrow \text{Least Squares}
+\rightarrow \hat{Y}=\hat{\beta}_0+\hat{\beta}_1X
+$$
+
+### 5. Reading Linear Regression Output in R
+
+Class example:
+
+~~~r
+m1 <- lm(med_rent ~ med_inc, data = tracts)
+summary(m1)
+~~~
+
+The output is approximately:
+
+|  | Estimate | S.E. | t-value | p-value |
+|---|---:|---:|---:|---|
+| Intercept | 690.0 | 38.0 | 18.2 | < 2e-16 |
+| `med_inc` | 0.0081 | 0.0005 | 16.2 | < 2e-16 |
+
+The fitted model is:
+
+$$
+\widehat{Rent}=690+0.0081\times Income
+$$
+
+#### Estimate
+
+The units of $\hat{\beta}_1=0.0081$ are:
+
+$$
+\frac{\text{dollars of monthly rent}}{\text{dollar of annual income}}
+$$
+
+For a \$10,000 increase in annual income:
+
+$$
+0.0081\times 10{,}000=81
+$$
+
+Interpretation: for each \$10,000 increase in annual income, predicted monthly rent rises by about \$81 on average.
+
+This is an association or predicted difference. This regression alone does not show that income causes rent to rise.
+
+#### Standard Error (S.E.)
+
+The standard error measures uncertainty in a coefficient estimate.
+
+- Smaller SE → a more precise coefficient estimate.
+- Larger SE → a less certain coefficient estimate.
+
+It is not the prediction error for each observation.
+
+#### t-value
+
+$$
+t=\frac{Estimate}{Standard\ Error}
+$$
+
+Here:
+
+$$
+t=\frac{0.0081}{0.0005}\approx16.2
+$$
+
+We test $H_0:\beta_1=0$. In class, $|t|>1.96$ was used as an approximate reference for a large-sample, two-sided 5% test.
+
+#### p-value
+
+Here, $p<2\times10^{-16}$. If $H_0:\beta_1=0$ and the model assumptions hold, the probability of observing a test statistic this extreme or more extreme is very small.
+
+We can therefore reject $H_0$: the data provide strong statistical evidence of a linear association between income and rent.
+
+> Statistically significant ≠ practically important ≠ causal.
+
+**Estimate → SE → t → p**
+
+### 6. Noise in Y vs. Noise in X
+
+#### Noise in Y → Residuals
+
+Random variation in Y and factors the model does not explain appear in the residuals:
+
+$$
+Observed\ Y=Predicted\ Y+Residual
+$$
+
+But residuals are not necessarily all random noise:
+
+$$
+Residual=Random\ Noise+Unmodeled\ Systematic\ Variation
+$$
+
+For example, suppose transit accessibility affects rent but the model only includes income. Variation due to transit will enter the residuals, even though it is systematic variation rather than purely random noise.
+
+#### Noise in X → Flattens the Slope
+
+If the predictor has measurement error:
+
+$$
+X_{observed}=X_{true}+noise
+$$
+
+Under classical random measurement-error conditions, the estimated slope is usually pulled toward zero: $|\hat{\beta}_1|\downarrow$. This is called **attenuation bias**.
+
+### 7. Fit vs. Prediction
+
+#### Model Fit
+
+A common fit measure is $R^2$.
+
+In this class, $R^2$ describes how well the model fits the data used to estimate it: its in-sample fit. For example, $R^2=0.70$ means the model explains about 70% of the variation in Y within the sample.
+
+> Good fit ≠ good prediction.
+
+A model can fit the training data well yet predict new data poorly.
+
+### 8. Train / Test Split
+
+A typical split is 80% training and 20% test data.
+
+- **Training set:** Used to fit the model.
+- **Test set:** Kept entirely out of training and used to evaluate prediction on unseen data.
+
+Fit the model on the training set, use $X_{test}$ to generate $\hat{Y}_{test}$, and compare actual Y with predicted $\hat{Y}$.
+
+### 9. RMSE: Evaluating Prediction Error
+
+$$
+RMSE=\sqrt{\frac{1}{n}\sum_{i=1}^{n}(y_i-\hat{y}_i)^2}
+$$
+
+Calculation steps:
+
+1. Subtract predicted values from actual values.
+2. Square the errors.
+3. Take their mean.
+4. Take the square root.
+
+Example:
+
+- Observation 1: $500-400=100\rightarrow100^2=10{,}000$.
+- Observation 2: $900-1200=-300\rightarrow(-300)^2=90{,}000$.
+
+$$
+MSE=\frac{10{,}000+90{,}000}{2}=50{,}000
+$$
+
+$$
+RMSE=\sqrt{50{,}000}\approx223.6
+$$
+
+If Y is monthly rent, RMSE is approximately \$224 per month.
+
+RMSE is easy to interpret because taking the square root returns it to the original units of Y. **Lower RMSE is better.**
+
+#### $R^2$ vs. RMSE
+
+|  | $R^2$ | RMSE |
+|---|---|---|
+| What it mainly measures | Model fit | Prediction error |
+| Class emphasis | Training / fitted data | Test / unseen data |
+| Units | Unitless | Same as Y |
+| Better direction | Higher | Lower |
+
+### 10. Cross Validation (CV)
+
+A single train/test split can be affected by chance: the result may depend on which observations happened to enter the test set. K-fold cross validation addresses this concern.
+
+#### 5-Fold CV
+
+Suppose there are 100 records, divided into five groups of 20. In each round:
+
+- Four folds are used for training.
+- One fold is used for testing.
+- Each fold takes a turn as the test set.
+
+| Round | Training | Test |
+|---:|---|---|
+| 1 | Folds 2–5 | Fold 1 |
+| 2 | Folds 1, 3–5 | Fold 2 |
+| 3 | Folds 1–2, 4–5 | Fold 3 |
+| 4 | Folds 1–3, 5 | Fold 4 |
+| 5 | Folds 1–4 | Fold 5 |
+
+This produces $RMSE_1,RMSE_2,RMSE_3,RMSE_4,RMSE_5$. One way to combine the results is:
+
+$$
+CV\ RMSE=\frac{RMSE_1+\cdots+RMSE_5}{5}
+$$
+
+The central goal of CV is to evaluate generalization to unseen data.
+
+### 11. Overfitting
+
+Class summary: **Overfitting = learned the noise!**
+
+Ideally, a model learns $f(X)$. An excessively flexible model may learn both the signal and the noise.
+
+A typical pattern is $RMSE_{train}\downarrow$ while $RMSE_{test}\uparrow$.
+
+> Excellent training fit ≠ good prediction.
+
+Cross validation helps identify overfitting because each round requires the model to predict data it did not see during that round's training.
+
+### 12. How to Pick Features?
+
+If the goal is prediction, feature selection should not be based only on:
+
+- The highest training $R^2$.
+- The smallest p-value.
+- The largest number of features.
+
+The question is: **Which features produce the best predictions on unseen data?**
+
+For example:
+
+$$
+M_1: Rent\sim Income
+$$
+
+$$
+M_2: Rent\sim Income+Education
+$$
+
+$$
+M_3: Rent\sim Income+Education+Stations
+$$
+
+Compare their CV RMSE:
+
+| Model | Features | CV RMSE |
+|---|---|---:|
+| M1 | Income | \$320 |
+| M2 | Income + Education | \$270 |
+| M3 | Income + Education + Stations | \$285 |
+
+M2 has the best out-of-sample prediction here because it has the lowest RMSE.
+
+After adding a feature:
+
+- If RMSE falls, the feature helps prediction.
+- If RMSE rises, complexity has increased while generalization has worsened; the feature may not be worth adding.
+
+**Pick features by out-of-sample prediction performance.**
+
+### 13. Multicollinearity
+
+Multicollinearity means that multiple predictors are strongly correlated. Median income and per-capita income, for example, might have $Corr(X_1,X_2)\approx0.90$.
+
+#### Effect on Inference
+
+The effects are more pronounced for inference:
+
+- Coefficients become unstable.
+- Standard errors increase.
+- Coefficients can become sensitive to model specification.
+
+The model has difficulty distinguishing which X explains Y.
+
+#### Effect on Prediction
+
+> Mostly harmless, but check your prediction.
+
+If the goal is prediction, highly correlated predictors do not necessarily have to be removed. Check CV or test RMSE. If out-of-sample prediction has not worsened, multicollinearity alone is not enough to call the model poor.
+
+### 14. Homoskedasticity
+
+One important assumption of linear regression is:
+
+$$
+Var(\epsilon\mid X)=\sigma^2
+$$
+
+This means that the variance of the residuals stays approximately constant across different levels of X.
+
+If the residuals spread out more as X increases, the pattern is called **heteroskedasticity**. It mainly affects inference:
+
+- The coefficient itself is not necessarily biased as a result.
+- Conventional standard errors may be unreliable.
+- This, in turn, affects t-values and p-values.
+
+The sequence is: Estimate → SE → t → p.
+
+In practice, analysts often use heteroskedasticity-robust standard errors.
+
+## Proving R Works
+
+~~~{r}
+#| label: session-info
+#| echo: true
+
+sessionInfo()
+~~~
+
+## Reflection
+
+The central reminder from this week's note is to evaluate training fit and prediction on new data separately. When interpreting coefficients, it is also important to distinguish statistical association from practical importance and causation, and to check the model assumptions behind standard errors.
+
+## Questions I Still Have
+
+None.
