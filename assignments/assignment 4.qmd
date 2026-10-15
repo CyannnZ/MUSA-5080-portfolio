@@ -1,7 +1,7 @@
 ---
 title: "Assignment: Building Features, Watching What Happens"
 subtitle: "MUSA 5080 · Integrates Weeks 1–5 · Due Friday, October 16"
-author: "YOUR NAME"
+author: "Chenyan Zhao"
 format:
   html:
     toc: true
@@ -122,11 +122,15 @@ philly_tracts <- get_acs(
   county = "Philadelphia",
   variables = c(
     total_pop = "B01003_001",
-    # your outcome's numerator and denominator (or median), e.g.:
-    # ___ = "___",
-    # ___ = "___",
-    # your baseline predictors, e.g.:
-    # ___ = "___"
+    # your outcome's numerator and denominator (or median):
+    households       = "B08201_001", 
+    no_vehicle       = "B08201_002", 
+    # your baseline predictors:
+    median_income    = "B19013_001", 
+    occupied_units   = "B25003_001", 
+    renter_units     = "B25003_003",
+    poverty_universe = "B17001_001", 
+    below_poverty    = "B17001_002"
   ),
   year = 2023,
   output = "wide",
@@ -140,13 +144,18 @@ philly_tracts <- get_acs(
 philly_tracts <- philly_tracts %>%
   mutate(
     # build your outcome, e.g. a percentage:
-    # y = ___E / ___E * 100,
+    y = no_vehicleE / householdsE * 100,
     # and its reliability. For a percentage, use tidycensus::moe_prop();
     # for a median or count, use the E and M columns directly.
-    # y_moe = ___,
-    # y_cv  = (y_moe / 1.645) / y * 100
+    y_moe = tidycensus::moe_prop(
+      no_vehicleE, householdsE,
+      no_vehicleM, householdsM
+    )*100,
+    y_cv  = (y_moe / 1.645) / y * 100,
     # your predictors:
-    # ___ = ___
+    median_income = median_incomeE,
+    renter_pct = renter_unitsE/occupied_unitsE*100,
+    poverty_pct = below_povertyE/poverty_universeE*100
   )
 ```
 
@@ -158,10 +167,14 @@ Before you commit, check three things.
 #| label: reliability
 # How many tracts have no value for your outcome?
 sum(is.na(philly_tracts$y))
+```
 
+```{r}
 # How reliable is it?
 summary(philly_tracts$y_cv)
+```
 
+```{r}
 philly_tracts %>%
   mutate(reliability = case_when(
     y_cv < 12  ~ "High",
@@ -170,18 +183,22 @@ philly_tracts %>%
   )) %>%
   st_drop_geometry() %>%
   count(reliability)
+```
 
+```{r}
 # What does the distribution look like?
 ggplot(philly_tracts, aes(x = y)) +
   geom_histogram(bins = 30) +
   theme_minimal()
 ```
 
+
+
 If more than about a third of tracts have low reliability, consider a different outcome, or one built from larger counts. Write your reasoning either way.
 
 **Answer (2–3 sentences):** What is your outcome, why would an agency want to predict it, and how reliable is it?
 
-*Your answer:*
+*Your answer:* My outcome is the percentage of households with no vehicle in each Philadelphia census tract, based on the 2019–2023 ACS. A transportation agency could use this measure to identify areas where residents may need better transit access. The reliability check classifies 29 tracts as high, 313 as moderate, and 66 as low reliability (16.2% low), so I will proceed with this outcome.
 
 ### 1C: Decide which tracts to model
 
@@ -191,17 +208,28 @@ Filter once, here, and never again. Every later step uses `tracts`.
 #| label: filter
 tracts <- philly_tracts %>%
   filter(total_popE > 0,
-         !is.na(y)
-         # add !is.na() for each baseline predictor like in the in-class lab
+         !is.na(y),
+         !is.na(median_income),
+         !is.na(renter_pct),
+         !is.na(poverty_pct)
          )
 
 nrow(philly_tracts)
 nrow(tracts)
 ```
+```{r}
+philly_tracts %>%
+  filter(!GEOID %in% tracts$GEOID) %>%
+  st_drop_geometry() %>%
+  select(NAME, total_popE, householdsE, y,
+         median_income, renter_pct, poverty_pct) %>%
+  as_tibble() %>%
+  print(n = 27)
+```
 
 **Answer:** How many tracts did you lose, and what kinds of places are they?
 
-*Your answer:*
+*Your answer:* I lost 27 of 408 tracts, leaving 381 for modeling. Twenty excluded tracts had no households, so their no-vehicle household percentage was undefined; most of these also had no residents. The other seven had households but no ACS median household income estimate, which is needed for my baseline model.
 
 ---
 
@@ -213,16 +241,22 @@ Plot your outcome against each predictor before modeling (the Week 3 habit).
 
 ```{r}
 #| label: look
-# one scatterplot per predictor, e.g.:
-# ggplot(tracts, aes(x = ___, y = y)) + geom_point(alpha = 0.5) +
-#   geom_smooth(method = "lm", se = FALSE) + theme_minimal()
+# one scatterplot per predictor:
+ggplot(tracts, aes(x = median_income, y = y)) + geom_point(alpha = 0.5) +
+geom_smooth(method = "lm", se = FALSE) + theme_minimal()
+
+ggplot(tracts, aes(x = poverty_pct, y = y)) + geom_point(alpha = 0.5) +
+geom_smooth(method = "lm", se = FALSE) + theme_minimal()
+
+ggplot(tracts, aes(x = renter_pct, y = y)) + geom_point(alpha = 0.5) +
+geom_smooth(method = "lm", se = FALSE) + theme_minimal()
 ```
 
 ### 2B: Fit and log
 
 ```{r}
 #| label: m1
-f1 <- y ~ ___ + ___ + ___
+f1 <- y ~ median_income + renter_pct + poverty_pct
 
 m1 <- lm(f1, data = tracts)
 summary(m1)
@@ -230,12 +264,12 @@ summary(m1)
 model_log <- model_log %>%
   add_row(model = "m1", added = "ACS baseline",
           cv_rmse = cv_rmse(f1, tracts),
-          notes = "___")
+          notes = "Median income, renter share, poverty share")
 
 model_log
 ```
 
-Write the CV RMSE as a sentence, in your outcome's units: "On tracts it hasn't seen, the baseline model misses by about ___."
+On tracts it hasn't seen, the baseline model misses by about 11.9 percentage points.
 
 ### 2C: Where is the baseline wrong?
 
@@ -256,7 +290,7 @@ ggplot(tracts) +
 
 **Answer:** Where do the residuals cluster? What might those places have in common that your model doesn't know about? **Use this answer to choose your open data layers in Part 3.**
 
-*Your answer:*
+*Your answer:* Residuals appear to cluster spatially: several central and southwestern tracts have higher no-vehicle rates than the baseline predicts, while many northeastern tracts have lower rates. The ACS predictors may be missing differences in transit access and distance from the city center. I will test whether proximity to trolley and rapid-transit stations helps explain these patterns.
 
 ---
 
@@ -343,19 +377,26 @@ Pull **at least two layers** that you think relate to your outcome. Base your ch
 
 ```{r}
 #| label: my-layers
-layer1 <- carto_get(
-  "SELECT the_geom, ___
-   FROM ___
-   WHERE ___"
+layer1 <- st_read(
+  "https://opendata.arcgis.com/api/v3/datasets/dd2afb618d804100867dfe0669383159_0/downloads/data?format=geojson&spatialRefId=4326",
+  quiet = TRUE
 ) %>%
-  st_transform(st_crs(tracts))
+  st_transform(st_crs(tracts))  # 2023 trolley stations
 
-layer2 <- ___
+layer2 <- st_read(
+  "https://opendata.arcgis.com/api/v3/datasets/af52d74b872045d0abb4a6bbbb249453_0/downloads/data?format=geojson&spatialRefId=4326",
+  quiet = TRUE
+) %>%
+  st_transform(st_crs(tracts))  # 2023 high-speed transit stations
+
+nrow(layer1)
+nrow(layer2)
 ```
 
 **Answer:** Why these layers? What do you expect them to capture that the ACS variables don't?
 
-*Your answer:*
+*Your answer:* I choose these two layers because the baseline model's residuals cluster geographically. Station counts and distances may capture access to public transit, which my ACS predictors—income, renter share, and poverty rate—do not measure.
+I expect tracts with better station access may have higher no-vehicle household rates than the baseline predicts, but I will check whether these features actually lower CV RMSE.
 
 ---
 
@@ -434,22 +475,51 @@ Build **at least three spatial features** from your own layers, and use at least
 ```{r}
 #| label: my-spatial
 tracts <- tracts %>%
-  mutate(___ = ___)
+  mutate(n_trolley = lengths(st_intersects(., layer1)))
 
-f2 <- y ~ ___
+f2 <- y ~ median_income + renter_pct + poverty_pct + n_trolley
 
 model_log <- model_log %>%
-  add_row(model = "m2", added = "___",
+  add_row(model = "m2", added = "Trolley station count",
           cv_rmse = cv_rmse(f2, tracts),
-          notes = "___")
+          notes = "Number of 2023 trolley stations in each tract")
 
 # repeat for each feature
 model_log
 ```
 
+```{r}
+tracts <- tracts %>%
+  mutate(trolley_per_sqmi = n_trolley / area_sqmi)
+
+f3 <- y ~ median_income + renter_pct + poverty_pct + trolley_per_sqmi
+
+model_log <- model_log %>%
+  add_row(model = "m3", added = "Trolley stations per square mile",
+          cv_rmse = cv_rmse(f3, tracts),
+          notes = "Station count divided by tract area")
+
+model_log
+```
+
+```{r}
+tracts <- tracts %>%
+  mutate(n_rapid = lengths(st_intersects(., layer2)))
+
+f4 <- y ~ median_income + renter_pct + poverty_pct + n_rapid
+
+model_log <- model_log %>%
+  add_row(model = "m4", added = "Rapid-transit station count",
+          cv_rmse = cv_rmse(f4, tracts),
+          notes = "Number of 2023 rapid-transit stations in each tract")
+
+model_log
+```
+
+
 **Answer:** Which spatial feature helped most? Did any feature you expected to help do nothing, or make CV RMSE worse? Why might that be?
 
-*Your answer:*
+*Your answer:* Trolley stations per square mile helped most, lowering CV RMSE from 11.94 to 11.44 percentage points. Rapid-transit station count also improved the model slightly, but raw trolley station count made CV RMSE worse, rising to 12.20. One possible reason is that raw counts partly reflect tract size, while density adjusts for area; counting only stations inside a tract may also miss nearby stations across its boundary.
 
 ---
 
