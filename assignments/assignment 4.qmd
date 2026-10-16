@@ -1,7 +1,8 @@
 ---
-title: "Assignment: Building Features, Watching What Happens"
+title: "Assignment 4: Building Features, Watching What Happens"
 subtitle: "MUSA 5080 · Integrates Weeks 1–5 · Due Friday, October 16"
 author: "Chenyan Zhao"
+date: Octorber 16, 2026
 format:
   html:
     toc: true
