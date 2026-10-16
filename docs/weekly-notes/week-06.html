@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.10.18">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="dcterms.date" content="2026-10-09">
+<meta name="description" content="Transformations, nonlinear terms, categories, interactions, place fixed effects, and 10-fold cross-validation for rent prediction.">
+
+<title>Week 6: Feature Engineering – Chenyan Zhao - MUSA 5080 Portfolio</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-92404dd89b1444827012a9e3a58cda88.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../index.html">
+    <span class="navbar-title">Portfolio</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../index.html"> 
+<span class="menu-text">Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../about.html"> 
+<span class="menu-text">About</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../weekly-notes/index.html"> 
+<span class="menu-text">Weekly Notes</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../assignments/index.html"> 
+<span class="menu-text">Assignments</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/CyannnZ/MUSA-5080-portfolio"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#what-we-did" id="toc-what-we-did" class="nav-link active" data-scroll-target="#what-we-did">What We Did</a></li>
+  <li><a href="#key-concepts" id="toc-key-concepts" class="nav-link" data-scroll-target="#key-concepts">Key Concepts</a></li>
+  <li><a href="#note" id="toc-note" class="nav-link" data-scroll-target="#note">Note</a>
+  <ul class="collapse">
+  <li><a href="#what-is-feature-engineering" id="toc-what-is-feature-engineering" class="nav-link" data-scroll-target="#what-is-feature-engineering">1. What Is Feature Engineering?</a></li>
+  <li><a href="#data-baseline-model-and-fixed-cv-folds" id="toc-data-baseline-model-and-fixed-cv-folds" class="nav-link" data-scroll-target="#data-baseline-model-and-fixed-cv-folds">2. Data, Baseline Model, and Fixed CV Folds</a></li>
+  <li><a href="#log-transformations" id="toc-log-transformations" class="nav-link" data-scroll-target="#log-transformations">3. Log Transformations</a></li>
+  <li><a href="#squared-terms-and-curvature" id="toc-squared-terms-and-curvature" class="nav-link" data-scroll-target="#squared-terms-and-curvature">4. Squared Terms and Curvature</a></li>
+  <li><a href="#categorical-variables-and-reference-groups" id="toc-categorical-variables-and-reference-groups" class="nav-link" data-scroll-target="#categorical-variables-and-reference-groups">5. Categorical Variables and Reference Groups</a></li>
+  <li><a href="#interactions-different-slopes-by-group" id="toc-interactions-different-slopes-by-group" class="nav-link" data-scroll-target="#interactions-different-slopes-by-group">6. Interactions: Different Slopes by Group</a></li>
+  <li><a href="#place-fixed-effects" id="toc-place-fixed-effects" class="nav-link" data-scroll-target="#place-fixed-effects">7. Place Fixed Effects</a></li>
+  <li><a href="#model-comparison-10-fold-cv-rmse" id="toc-model-comparison-10-fold-cv-rmse" class="nav-link" data-scroll-target="#model-comparison-10-fold-cv-rmse">8. Model Comparison: 10-Fold CV RMSE</a></li>
+  </ul></li>
+  <li><a href="#proving-r-works" id="toc-proving-r-works" class="nav-link" data-scroll-target="#proving-r-works">Proving R Works</a></li>
+  <li><a href="#reflection" id="toc-reflection" class="nav-link" data-scroll-target="#reflection">Reflection</a></li>
+  <li><a href="#questions-i-still-have" id="toc-questions-i-still-have" class="nav-link" data-scroll-target="#questions-i-still-have">Questions I Still Have</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<div class="quarto-title-block"><div><h1 class="title">Week 6: Feature Engineering</h1><button type="button" class="btn code-tools-button" id="quarto-code-tools-source"><i class="bi"></i> Code</button></div></div>
+</div>
+
+<div>
+  <div class="description">
+    Transformations, nonlinear terms, categories, interactions, place fixed effects, and 10-fold cross-validation for rent prediction.
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">October 9, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="what-we-did" class="level2">
+<h2 class="anchored" data-anchor-id="what-we-did">What We Did</h2>
+<p>This week, we engineered features for linear regression using 2023 ACS five-year data for Philadelphia census tracts. We compared log transformations, squared terms, categorical variables, interactions, and planning-district fixed effects. For each candidate model, we focused on prediction in dollars using the same 10-fold cross-validation (CV) split and its root mean squared error (RMSE).</p>
+</section>
+<section id="key-concepts" class="level2">
+<h2 class="anchored" data-anchor-id="key-concepts">Key Concepts</h2>
+<ul>
+<li>A linear model is linear in the features supplied to it. Transforming those features allows nonlinear relationships, group differences, and spatial heterogeneity.</li>
+<li>A coefficient’s interpretation depends on whether the outcome or predictor is logged, squared, or interacted with a category.</li>
+<li>Evaluate a model of <code>log(rent)</code> by back-transforming predictions to dollars <em>before</em> calculating RMSE against <code>rent</code>.</li>
+<li>Categorical variables use a reference group; changing that group changes coefficient comparisons, not fitted predictions.</li>
+<li>Fixed effects capture shared group-level differences, but they do not identify their causes and cannot directly predict a category absent from training.</li>
+<li>For prediction, compare candidate models with out-of-sample CV RMSE. A low p-value or strong training fit is not enough, and an association is not necessarily causal.</li>
+</ul>
+</section>
+<section id="note" class="level2">
+<h2 class="anchored" data-anchor-id="note">Note</h2>
+<section id="what-is-feature-engineering" class="level3">
+<h3 class="anchored" data-anchor-id="what-is-feature-engineering">1. What Is Feature Engineering?</h3>
+<p>A linear regression can draw only a straight-line relationship through the features it receives. Feature engineering means deciding what information and transformations to supply. A model can remain linear in its coefficients while using <code>log(income)</code>, <code>I(bldg_age^2)</code>, distance bands, interactions, or district indicators to represent relationships that are not simply straight lines in the original variables.</p>
+<p>For prediction, the practical question is whether the new features lower error on unseen observations. For interpretation, the practical question is what a one-unit change in each <em>transformed</em> feature means. Neither a predictive improvement nor a regression coefficient by itself establishes causation.</p>
+</section>
+<section id="data-baseline-model-and-fixed-cv-folds" class="level3">
+<h3 class="anchored" data-anchor-id="data-baseline-model-and-fixed-cv-folds">2. Data, Baseline Model, and Fixed CV Folds</h3>
+<p>The class example uses approximately 377 Philadelphia census tracts from the 2023 ACS five-year data. The tract geometries are projected to EPSG:2272, whose units are feet. The variables are:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Variable</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>rent</code></td>
+<td>Median gross rent, in dollars</td>
+</tr>
+<tr class="even">
+<td><code>income</code></td>
+<td>Median household income</td>
+</tr>
+<tr class="odd">
+<td><code>pct_renter</code></td>
+<td>Percentage of renter-occupied households</td>
+</tr>
+<tr class="even">
+<td><code>bldg_age</code></td>
+<td>Building age, calculated as <code>2023 - yr_builtE</code></td>
+</tr>
+<tr class="odd">
+<td><code>dist_ch_mi</code></td>
+<td>Distance from the tract to City Hall, in miles</td>
+</tr>
+</tbody>
+</table>
+<p>The baseline specification and result log are:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>f0 <span class="ot">&lt;-</span> rent <span class="sc">~</span> income <span class="sc">+</span> pct_renter <span class="sc">+</span> bldg_age <span class="sc">+</span> dist_ch_mi</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>m0 <span class="ot">&lt;-</span> <span class="fu">lm</span>(f0, <span class="at">data =</span> tracts)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>model_log <span class="ot">&lt;-</span> <span class="fu">tibble</span>(</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">model =</span> <span class="st">"m0"</span>,</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">added =</span> <span class="st">"baseline"</span>,</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">cv_rmse =</span> <span class="fu">cv_rmse</span>(f0, tracts)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>model_log</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><code>f0</code> is a formula, not a fitted model; <code>lm()</code> fits it. <code>summary(m0)</code> reports estimated coefficients. Here, <code>model_log</code> is a table of model results—“log” does not mean logarithm. Baseline 10-fold CV RMSE was approximately <strong>$265</strong>; lower is better.</p>
+<p>The comparison uses one reproducible set of ten folds. In each round, nine folds train the model and the remaining fold supplies unseen validation observations:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">5080</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>folds <span class="ot">&lt;-</span> <span class="fu">sample</span>(<span class="fu">rep</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>, <span class="at">length.out =</span> <span class="fu">nrow</span>(tracts)))</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>cv_rmse <span class="ot">&lt;-</span> <span class="cf">function</span>(f, data, <span class="at">log_outcome =</span> <span class="cn">FALSE</span>) {</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  preds <span class="ot">&lt;-</span> <span class="fu">numeric</span>(<span class="fu">nrow</span>(data))</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (k <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>) {</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    m <span class="ot">&lt;-</span> <span class="fu">lm</span>(f, <span class="at">data =</span> data[folds <span class="sc">!=</span> k, ])</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    p <span class="ot">&lt;-</span> <span class="fu">predict</span>(m, <span class="at">newdata =</span> data[folds <span class="sc">==</span> k, ])</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (log_outcome) p <span class="ot">&lt;-</span> <span class="fu">exp</span>(p) <span class="co"># Return predictions to dollars.</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    preds[folds <span class="sc">==</span> k] <span class="ot">&lt;-</span> p</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sqrt</span>(<span class="fu">mean</span>((data<span class="sc">$</span>rent <span class="sc">-</span> preds)<span class="sc">^</span><span class="dv">2</span>))</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Every candidate model must use the same folds for a fair comparison. This helper assumes <code>data</code> has the same row count and order as the data used to create <code>folds</code>; rebuild the folds if those rows change. The examples in this note depend on the class <code>tracts</code> object and are not run when this note is rendered.</p>
+</section>
+<section id="log-transformations" class="level3">
+<h3 class="anchored" data-anchor-id="log-transformations">3. Log Transformations</h3>
+<section id="why-log-a-predictor" class="level4">
+<h4 class="anchored" data-anchor-id="why-log-a-predictor">Why log a predictor?</h4>
+<p>Income is often right-skewed. <code>log(income)</code> compresses high values and makes equal <em>proportional</em> changes approximately equally spaced. A $20,000 change from $20,000 to $40,000 is economically different from a $20,000 change from $180,000 to $200,000, even though their absolute differences match.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(tracts, <span class="fu">aes</span>(income)) <span class="sc">+</span> <span class="fu">geom_histogram</span>(<span class="at">bins =</span> <span class="dv">40</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(tracts, <span class="fu">aes</span>(<span class="fu">log</span>(income))) <span class="sc">+</span> <span class="fu">geom_histogram</span>(<span class="at">bins =</span> <span class="dv">40</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="four-common-model-forms" class="level4">
+<h4 class="anchored" data-anchor-id="four-common-model-forms">Four common model forms</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Model form</th>
+<th>Formula example</th>
+<th>Coefficient interpretation</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Level–level</td>
+<td><code>y ~ x</code></td>
+<td>A one-unit increase in X corresponds to a <span class="math inline">\(\beta\)</span>-unit change in Y.</td>
+</tr>
+<tr class="even">
+<td>Level–log</td>
+<td><code>y ~ log(x)</code></td>
+<td>A 1% increase in X corresponds to approximately a <span class="math inline">\(\beta/100\)</span>-unit change in Y.</td>
+</tr>
+<tr class="odd">
+<td>Log–level</td>
+<td><code>log(y) ~ x</code></td>
+<td>A one-unit increase in X corresponds to approximately a <span class="math inline">\(100\beta\)</span>% change in Y.</td>
+</tr>
+<tr class="even">
+<td>Log–log</td>
+<td><code>log(y) ~ log(x)</code></td>
+<td>A 1% increase in X corresponds to approximately a <span class="math inline">\(\beta\)</span>% change in Y; <span class="math inline">\(\beta\)</span> is an elasticity.</td>
+</tr>
+</tbody>
+</table>
+<p>For <code>rent ~ log(income) + ...</code>, suppose the estimated income coefficient is <strong>502.1787</strong>. A 1% income increase is associated with about <strong>$5.02</strong> higher predicted monthly rent. For a 10% increase, use the exact log change:</p>
+<p><span class="math display">\[
+502.1787\log(1.10)\approx\$47.86.
+\]</span></p>
+<p>For <code>log(rent) ~ log(income) + ...</code>, a coefficient of <strong>0.36334</strong> means that a 1% income increase is associated with approximately a <strong>0.363%</strong> rent increase. In a log–level model, the exact percentage change for a one-unit increase in X is <span class="math inline">\(100(e^\beta-1)\)</span>%, rather than exactly <span class="math inline">\(100\beta\)</span>%.</p>
+</section>
+<section id="zeros-and-negative-values" class="level4">
+<h4 class="anchored" data-anchor-id="zeros-and-negative-values">Zeros and negative values</h4>
+<p><code>log(0)</code> is <code>-Inf</code>. For nonnegative counts such as crimes, trees, or 311 calls, <code>log1p(x)</code> computes <span class="math inline">\(\log(1+x)\)</span> and retains zero observations:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">log</span>(<span class="dv">0</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="fu">log1p</span>(<span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">10</span>, <span class="dv">100</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>For small counts, the ordinary percentage-change interpretation of <code>log(x)</code> does not transfer exactly to <code>log1p(x)</code>. Negative values require a transformation chosen for the substantive data context.</p>
+</section>
+<section id="a-logged-outcome-must-be-evaluated-in-dollars" class="level4">
+<h4 class="anchored" data-anchor-id="a-logged-outcome-must-be-evaluated-in-dollars">A logged outcome must be evaluated in dollars</h4>
+<p>A training residual RMSE of about <strong>0.1885</strong> for <code>log(rent)</code> is on a log scale. It cannot be compared directly with a training residual RMSE of about <strong>$259.55</strong> for an unlogged rent model. To compare predictive accuracy, return each logged prediction to dollars, then compute CV RMSE against observed <code>rent</code>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>f_logy <span class="ot">&lt;-</span> <span class="fu">log</span>(rent) <span class="sc">~</span> <span class="fu">log</span>(income) <span class="sc">+</span> pct_renter <span class="sc">+</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  bldg_age <span class="sc">+</span> dist_ch_mi</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="fu">cv_rmse</span>(f_logy, tracts, <span class="at">log_outcome =</span> <span class="cn">TRUE</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Because <span class="math inline">\(\exp(E[\log Y])\neq E[Y]\)</span>, simply exponentiating a fitted log outcome does not automatically give an unbiased prediction of mean rent; the note’s back-transformation is for comparison on the original dollar scale.</p>
+</section>
+</section>
+<section id="squared-terms-and-curvature" class="level3">
+<h3 class="anchored" data-anchor-id="squared-terms-and-curvature">4. Squared Terms and Curvature</h3>
+<p>If a flexible smooth on a scatterplot bends while a straight <code>geom_smooth(method = "lm")</code> line misses that pattern, a quadratic term may help:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>f_sq <span class="ot">&lt;-</span> rent <span class="sc">~</span> <span class="fu">log</span>(income) <span class="sc">+</span> pct_renter <span class="sc">+</span> bldg_age <span class="sc">+</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">I</span>(bldg_age<span class="sc">^</span><span class="dv">2</span>) <span class="sc">+</span> dist_ch_mi</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>m_sq <span class="ot">&lt;-</span> <span class="fu">lm</span>(f_sq, <span class="at">data =</span> tracts)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>In an R formula, <code>I(bldg_age^2)</code> means the literal square; <code>^</code> otherwise has special formula syntax. For <span class="math inline">\(Y=\beta_0+\beta_1x+\beta_2x^2\)</span>, the marginal slope at a particular <span class="math inline">\(x\)</span> is <span class="math inline">\(\beta_1+2\beta_2x\)</span>. Do not interpret <span class="math inline">\(\beta_1\)</span> or <span class="math inline">\(\beta_2\)</span> in isolation as a constant effect. A positive linear term with a negative square makes an inverted U; a negative linear term with a positive square makes a U.</p>
+<p>The turning point is <span class="math inline">\(x^*=-\beta_1/(2\beta_2)\)</span>. In the class example, the building-age coefficients were about <span class="math inline">\(-28.00445\)</span> and <span class="math inline">\(+0.1823244\)</span>, giving a minimum around <strong>76.8 years</strong>. That is near the upper end of the observed age range of roughly 5–85 years. The pre-1940 Census category is encoded as “1939 or earlier,” which bunches old buildings together; this fitted curve is not a natural law. Predictions far outside the observed age range can be implausible.</p>
+</section>
+<section id="categorical-variables-and-reference-groups" class="level3">
+<h3 class="anchored" data-anchor-id="categorical-variables-and-reference-groups">5. Categorical Variables and Reference Groups</h3>
+<p>Use categorical features for naturally distinct groups, such as zoning, planning district, or housing type. A numeric variable can also be grouped if the relationship seems to change in steps rather than smoothly. For example:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>tracts <span class="ot">&lt;-</span> tracts <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">renter_band =</span> <span class="fu">cut</span>(</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    pct_renter,</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">breaks =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">33</span>, <span class="dv">66</span>, <span class="dv">100</span>),</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"Mostly owners"</span>, <span class="st">"Mixed"</span>, <span class="st">"Mostly renters"</span>),</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">include.lowest =</span> <span class="cn">TRUE</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>tracts <span class="sc">%&gt;%</span> <span class="fu">st_drop_geometry</span>() <span class="sc">%&gt;%</span> <span class="fu">count</span>(renter_band)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The three example bands contain <strong>88</strong>, <strong>210</strong>, and <strong>79</strong> tracts. <code>cut()</code> uses numeric break points, <code>case_when()</code> supports custom rules, and <code>factor()</code> tells R to treat values as categories. With an intercept and <span class="math inline">\(k\)</span> categories, the model normally uses <span class="math inline">\(k-1\)</span> dummy variables, generated by <code>model.matrix()</code>.</p>
+<p>If <code>Core</code> is the reference in a distance-ring model, coefficients <code>ringInner = -122.2774</code> and <code>ringOuter = -164.1935</code> mean that, holding other features fixed, predicted rent is about <strong>$122.28 lower in Inner</strong> and <strong>$164.19 lower in Outer</strong> than in Core. They do <em>not</em> mean that rent in Outer is negative. Changing the reference group changes coefficient comparisons, not the fitted predictions:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>tracts_r <span class="ot">&lt;-</span> tracts <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">ring =</span> <span class="fu">relevel</span>(ring, <span class="at">ref =</span> <span class="st">"Outer"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Binning sacrifices information: replacing continuous <code>dist_ch_mi</code> with <code>Core</code>/<code>Inner</code>/<code>Outer</code> treats distinct distances within the same band alike. If the true relationship is smooth, this can worsen prediction.</p>
+</section>
+<section id="interactions-different-slopes-by-group" class="level3">
+<h3 class="anchored" data-anchor-id="interactions-different-slopes-by-group">6. Interactions: Different Slopes by Group</h3>
+<p>An interaction is useful when the relationship between X and Y differs by group:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>f_int <span class="ot">&lt;-</span> rent <span class="sc">~</span> <span class="fu">log</span>(income) <span class="sc">*</span> ring <span class="sc">+</span> pct_renter <span class="sc">+</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  bldg_age <span class="sc">+</span> <span class="fu">I</span>(bldg_age<span class="sc">^</span><span class="dv">2</span>)</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>m_int <span class="ot">&lt;-</span> <span class="fu">lm</span>(f_int, <span class="at">data =</span> tracts)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>In R formula syntax, <code>a * b</code> expands to <code>a + b + a:b</code>, whereas <code>a:b</code> adds only the interaction. With Core as the reference, the <code>log(income)</code> slope is <strong>653.6974</strong>. The Inner interaction changes it by <strong>−219.1028</strong>, giving about <strong>434.59</strong>; the Outer interaction changes it by <strong>−244.4214</strong>, giving about <strong>409.28</strong>. Because the outcome is rent in dollars and income is logged, a 1% income increase corresponds to approximately the group-specific slope divided by 100 dollars of monthly rent.</p>
+<p>Interacting every feature with every group increases the number of parameters quickly. With only about 377 tracts, that can overfit.</p>
+</section>
+<section id="place-fixed-effects" class="level3">
+<h3 class="anchored" data-anchor-id="place-fixed-effects">7. Place Fixed Effects</h3>
+<section id="district-intercepts" class="level4">
+<h4 class="anchored" data-anchor-id="district-intercepts">7.1 District intercepts</h4>
+<p>A place fixed effect gives each district its own intercept through a categorical district variable. It can absorb shared, unmeasured background differences—such as reputation, schools, transit, and history—but cannot reveal which of those mechanisms matters. The class example assigns each tract to the Philadelphia planning district with which it has the greatest area overlap, across <strong>18 planning districts</strong>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>tracts <span class="ot">&lt;-</span> tracts <span class="sc">%&gt;%</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_join</span>(</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    districts <span class="sc">%&gt;%</span> <span class="fu">select</span>(<span class="at">district =</span> dist_name),</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">largest =</span> <span class="cn">TRUE</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">district =</span> <span class="fu">factor</span>(district))</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>f_fe <span class="ot">&lt;-</span> rent <span class="sc">~</span> <span class="fu">log</span>(income) <span class="sc">+</span> pct_renter <span class="sc">+</span> bldg_age <span class="sc">+</span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">I</span>(bldg_age<span class="sc">^</span><span class="dv">2</span>) <span class="sc">+</span> district</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>m_fe <span class="ot">&lt;-</span> <span class="fu">lm</span>(f_fe, <span class="at">data =</span> tracts)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>In this example, the <code>log(income)</code> coefficient fell from about <strong>519.74</strong> before district effects to <strong>427.39</strong> after them. The earlier estimate mixed between-district and within-district differences; with district intercepts, the coefficient primarily compares tracts <em>within</em> districts. This change does not automatically establish a causal effect.</p>
+</section>
+<section id="the-unseen-category-problem-in-cv" class="level4">
+<h4 class="anchored" data-anchor-id="the-unseen-category-problem-in-cv">7.2 The unseen-category problem in CV</h4>
+<p>A fixed-effect model cannot directly predict a district level that did not appear in its training fold. <code>count(district)</code> revealed that <strong>Lower South had only one tract</strong>; a 10-fold CV round could place that one tract entirely in validation, causing <code>predict()</code> to fail. The class solution merged districts with fewer than ten tracts into a nearby district for a CV-ready variable:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>small <span class="ot">&lt;-</span> tracts <span class="sc">%&gt;%</span> <span class="fu">st_drop_geometry</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(district) <span class="sc">%&gt;%</span> <span class="fu">filter</span>(n <span class="sc">&lt;</span> <span class="dv">10</span> <span class="sc">|</span> <span class="fu">is.na</span>(district)) <span class="sc">%&gt;%</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pull</span>(district)</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>is_small <span class="ot">&lt;-</span> tracts<span class="sc">$</span>district <span class="sc">%in%</span> small <span class="sc">|</span> <span class="fu">is.na</span>(tracts<span class="sc">$</span>district)</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>nearest <span class="ot">&lt;-</span> <span class="fu">st_nearest_feature</span>(tracts[is_small, ], tracts[<span class="sc">!</span>is_small, ])</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>tracts <span class="ot">&lt;-</span> tracts <span class="sc">%&gt;%</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">district_cv =</span> <span class="fu">as.character</span>(district))</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>tracts<span class="sc">$</span>district_cv[is_small] <span class="ot">&lt;-</span></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as.character</span>(tracts<span class="sc">$</span>district[<span class="sc">!</span>is_small][nearest])</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>tracts <span class="ot">&lt;-</span> tracts <span class="sc">%&gt;%</span></span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">district_cv =</span> <span class="fu">factor</span>(district_cv))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>At least about <strong>10 observations per group</strong> is a useful 10-fold CV rule of thumb; more is safer. Other approaches include combining rare levels into “Other” (for example, with <code>fct_lump_min()</code>), although that may not make geographic sense, or using coarser spatial units. District IDs such as 1–18 are labels, not a continuous numeric predictor, so they must be represented as a factor.</p>
+</section>
+<section id="fixed-effects-versus-measured-spatial-features" class="level4">
+<h4 class="anchored" data-anchor-id="fixed-effects-versus-measured-spatial-features">7.3 Fixed effects versus measured spatial features</h4>
+<ul>
+<li><strong>District fixed effects</strong> answer which districts differ in baseline rent, capturing leftover shared district variation. They do not explain the mechanism or generalize directly to a new district.</li>
+<li><strong>Spatial features</strong> such as distance to transit or parks and nearby crime describe measurable attributes. They can reveal associations with those attributes and may generalize conditionally to new locations.</li>
+</ul>
+<p>Both can be used together: measured spatial features may explain some differences, while district effects absorb remaining shared district variation. The class note points ahead to nearby-neighbor (kNN) features on October 16.</p>
+</section>
+</section>
+<section id="model-comparison-10-fold-cv-rmse" class="level3">
+<h3 class="anchored" data-anchor-id="model-comparison-10-fold-cv-rmse">8. Model Comparison: 10-Fold CV RMSE</h3>
+<p>All values below are approximate class results in <strong>dollars</strong>, using the same ten folds. Lower CV RMSE means better out-of-sample rent prediction in this comparison.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 30%">
+<col style="width: 30%">
+<col style="width: 40%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Model</th>
+<th>Feature change</th>
+<th style="text-align: right;">10-fold CV RMSE</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>m0</td>
+<td>Baseline</td>
+<td style="text-align: right;">$265</td>
+</tr>
+<tr class="even">
+<td>m1</td>
+<td><code>log(income)</code></td>
+<td style="text-align: right;">$265</td>
+</tr>
+<tr class="odd">
+<td>m2</td>
+<td><code>log(rent)</code> + <code>log(income)</code>; predictions back-transformed</td>
+<td style="text-align: right;">$263</td>
+</tr>
+<tr class="even">
+<td>m3</td>
+<td><code>bldg_age^2</code> in a level-rent model</td>
+<td style="text-align: right;">$261</td>
+</tr>
+<tr class="odd">
+<td>m4</td>
+<td><code>ring</code> replaces <code>dist_ch_mi</code></td>
+<td style="text-align: right;">$265</td>
+</tr>
+<tr class="even">
+<td>m5</td>
+<td><code>log(income)</code> × <code>ring</code></td>
+<td style="text-align: right;">$264</td>
+</tr>
+<tr class="odd">
+<td>m6</td>
+<td>District fixed effects, with rare districts merged with nearby districts</td>
+<td style="text-align: right;"><strong>$256</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The m2 model and the later m3–m6 models are separate candidate specifications, not a single formula built cumulatively at every step. <strong>m6 has the lowest CV RMSE in this example</strong>, but that does not imply that fixed effects are always the best choice.</p>
+</section>
+</section>
+<section id="proving-r-works" class="level2">
+<h2 class="anchored" data-anchor-id="proving-r-works">Proving R Works</h2>
+<p><sub></sub>~{r} #| label: session-info #| echo: true</p>
+<p>sessionInfo() <sub></sub>~</p>
+</section>
+<section id="reflection" class="level2">
+<h2 class="anchored" data-anchor-id="reflection">Reflection</h2>
+<p>This week’s central lesson is that engineering a feature changes both what a linear model can represent and how its coefficients should be read. I should compare candidate models on the same unseen-data folds and on the same outcome scale, while being careful about lost information from bins, overfitting from interactions, and unseen categories in place fixed effects.</p>
+</section>
+<section id="questions-i-still-have" class="level2">
+<h2 class="anchored" data-anchor-id="questions-i-still-have">Questions I Still Have</h2>
+<p>None</p>
+
+
+<!-- -->
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+    const viewSource = window.document.getElementById('quarto-view-source') ||
+                       window.document.getElementById('quarto-code-tools-source');
+    if (viewSource) {
+      const sourceUrl = viewSource.getAttribute("data-quarto-source-url");
+      viewSource.addEventListener("click", function(e) {
+        if (sourceUrl) {
+          // rstudio viewer pane
+          if (/\bcapabilities=\b/.test(window.location)) {
+            window.open(sourceUrl);
+          } else {
+            window.location.href = sourceUrl;
+          }
+        } else {
+          const modal = new bootstrap.Modal(document.getElementById('quarto-embedded-source-code-modal'));
+          modal.show();
+        }
+        return false;
+      });
+    }
+    function toggleCodeHandler(show) {
+      return function(e) {
+        const cellDetails = window.document.querySelectorAll(".cell details.code-fold");
+        for (let i=0; i<cellDetails.length; i++) {
+          const details = cellDetails[i];
+          if (show) {
+            details.open = true;
+          } else {
+            details.removeAttribute("open");
+          }
+        }
+        const cellCodeDivs = window.document.querySelectorAll(".cell div.sourceCode.cell-code");
+        const fromCls = show ? "hidden" : "unhidden";
+        const toCls = show ? "unhidden" : "hidden";
+        for (let i=0; i<cellCodeDivs.length; i++) {
+          const codeDiv = cellCodeDivs[i];
+          if (codeDiv.classList.contains(fromCls)) {
+            codeDiv.classList.remove(fromCls);
+            codeDiv.classList.add(toCls);
+          } 
+        }
+        return false;
+      }
+    }
+    const hideAllCode = window.document.getElementById("quarto-hide-all-code");
+    if (hideAllCode) {
+      hideAllCode.addEventListener("click", toggleCodeHandler(false));
+    }
+    const showAllCode = window.document.getElementById("quarto-show-all-code");
+    if (showAllCode) {
+      showAllCode.addEventListener("click", toggleCodeHandler(true));
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script><div class="modal fade" id="quarto-embedded-source-code-modal" tabindex="-1" aria-labelledby="quarto-embedded-source-code-modal-label" aria-hidden="true"><div class="modal-dialog modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="quarto-embedded-source-code-modal-label">Source Code</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12" data-shortcodes="false"><pre class="sourceCode markdown code-with-copy"><code class="sourceCode markdown"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="an">title:</span><span class="co"> "Week 6: Feature Engineering"</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="an">description:</span><span class="co"> "Transformations, nonlinear terms, categories, interactions, place fixed effects, and 10-fold cross-validation for rent prediction."</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="an">date:</span><span class="co"> 2026-10-09</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a><span class="fu">## What We Did</span></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>This week, we engineered features for linear regression using 2023 ACS five-year data for Philadelphia census tracts. We compared log transformations, squared terms, categorical variables, interactions, and planning-district fixed effects. For each candidate model, we focused on prediction in dollars using the same 10-fold cross-validation (CV) split and its root mean squared error (RMSE).</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a><span class="fu">## Key Concepts</span></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>A linear model is linear in the features supplied to it. Transforming those features allows nonlinear relationships, group differences, and spatial heterogeneity.</span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>A coefficient's interpretation depends on whether the outcome or predictor is logged, squared, or interacted with a category.</span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Evaluate a model of <span class="in">`log(rent)`</span> by back-transforming predictions to dollars *before* calculating RMSE against <span class="in">`rent`</span>.</span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Categorical variables use a reference group; changing that group changes coefficient comparisons, not fitted predictions.</span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Fixed effects capture shared group-level differences, but they do not identify their causes and cannot directly predict a category absent from training.</span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>For prediction, compare candidate models with out-of-sample CV RMSE. A low p-value or strong training fit is not enough, and an association is not necessarily causal.</span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a><span class="fu">## Note</span></span>
+<span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a><span class="fu">### 1. What Is Feature Engineering?</span></span>
+<span id="cb12-23"><a href="#cb12-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-24"><a href="#cb12-24" aria-hidden="true" tabindex="-1"></a>A linear regression can draw only a straight-line relationship through the features it receives. Feature engineering means deciding what information and transformations to supply. A model can remain linear in its coefficients while using <span class="in">`log(income)`</span>, <span class="in">`I(bldg_age^2)`</span>, distance bands, interactions, or district indicators to represent relationships that are not simply straight lines in the original variables.</span>
+<span id="cb12-25"><a href="#cb12-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-26"><a href="#cb12-26" aria-hidden="true" tabindex="-1"></a>For prediction, the practical question is whether the new features lower error on unseen observations. For interpretation, the practical question is what a one-unit change in each *transformed* feature means. Neither a predictive improvement nor a regression coefficient by itself establishes causation.</span>
+<span id="cb12-27"><a href="#cb12-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-28"><a href="#cb12-28" aria-hidden="true" tabindex="-1"></a><span class="fu">### 2. Data, Baseline Model, and Fixed CV Folds</span></span>
+<span id="cb12-29"><a href="#cb12-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-30"><a href="#cb12-30" aria-hidden="true" tabindex="-1"></a>The class example uses approximately 377 Philadelphia census tracts from the 2023 ACS five-year data. The tract geometries are projected to EPSG:2272, whose units are feet. The variables are:</span>
+<span id="cb12-31"><a href="#cb12-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-32"><a href="#cb12-32" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Variable <span class="pp">|</span> Meaning <span class="pp">|</span></span>
+<span id="cb12-33"><a href="#cb12-33" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|</span></span>
+<span id="cb12-34"><a href="#cb12-34" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`rent`</span> <span class="pp">|</span> Median gross rent, in dollars <span class="pp">|</span></span>
+<span id="cb12-35"><a href="#cb12-35" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`income`</span> <span class="pp">|</span> Median household income <span class="pp">|</span></span>
+<span id="cb12-36"><a href="#cb12-36" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`pct_renter`</span> <span class="pp">|</span> Percentage of renter-occupied households <span class="pp">|</span></span>
+<span id="cb12-37"><a href="#cb12-37" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`bldg_age`</span> <span class="pp">|</span> Building age, calculated as <span class="in">`2023 - yr_builtE`</span> <span class="pp">|</span></span>
+<span id="cb12-38"><a href="#cb12-38" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`dist_ch_mi`</span> <span class="pp">|</span> Distance from the tract to City Hall, in miles <span class="pp">|</span></span>
+<span id="cb12-39"><a href="#cb12-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-40"><a href="#cb12-40" aria-hidden="true" tabindex="-1"></a>The baseline specification and result log are:</span>
+<span id="cb12-41"><a href="#cb12-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-42"><a href="#cb12-42" aria-hidden="true" tabindex="-1"></a><span class="in">~~~r</span></span>
+<span id="cb12-43"><a href="#cb12-43" aria-hidden="true" tabindex="-1"></a>f0 <span class="ot">&lt;-</span> rent <span class="sc">~</span> income <span class="sc">+</span> pct_renter <span class="sc">+</span> bldg_age <span class="sc">+</span> dist_ch_mi</span>
+<span id="cb12-44"><a href="#cb12-44" aria-hidden="true" tabindex="-1"></a>m0 <span class="ot">&lt;-</span> <span class="fu">lm</span>(f0, <span class="at">data =</span> tracts)</span>
+<span id="cb12-45"><a href="#cb12-45" aria-hidden="true" tabindex="-1"></a>model_log <span class="ot">&lt;-</span> <span class="fu">tibble</span>(</span>
+<span id="cb12-46"><a href="#cb12-46" aria-hidden="true" tabindex="-1"></a>  <span class="at">model =</span> <span class="st">"m0"</span>,</span>
+<span id="cb12-47"><a href="#cb12-47" aria-hidden="true" tabindex="-1"></a>  <span class="at">added =</span> <span class="st">"baseline"</span>,</span>
+<span id="cb12-48"><a href="#cb12-48" aria-hidden="true" tabindex="-1"></a>  <span class="at">cv_rmse =</span> <span class="fu">cv_rmse</span>(f0, tracts)</span>
+<span id="cb12-49"><a href="#cb12-49" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb12-50"><a href="#cb12-50" aria-hidden="true" tabindex="-1"></a>model_log</span>
+<span id="cb12-51"><a href="#cb12-51" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb12-52"><a href="#cb12-52" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-53"><a href="#cb12-53" aria-hidden="true" tabindex="-1"></a><span class="in">`f0`</span> is a formula, not a fitted model; <span class="in">`lm()`</span> fits it. <span class="in">`summary(m0)`</span> reports estimated coefficients. Here, <span class="in">`model_log`</span> is a table of model results—“log” does not mean logarithm. Baseline 10-fold CV RMSE was approximately **$265**; lower is better.</span>
+<span id="cb12-54"><a href="#cb12-54" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-55"><a href="#cb12-55" aria-hidden="true" tabindex="-1"></a>The comparison uses one reproducible set of ten folds. In each round, nine folds train the model and the remaining fold supplies unseen validation observations:</span>
+<span id="cb12-56"><a href="#cb12-56" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-57"><a href="#cb12-57" aria-hidden="true" tabindex="-1"></a><span class="in">~~~r</span></span>
+<span id="cb12-58"><a href="#cb12-58" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">5080</span>)</span>
+<span id="cb12-59"><a href="#cb12-59" aria-hidden="true" tabindex="-1"></a>folds <span class="ot">&lt;-</span> <span class="fu">sample</span>(<span class="fu">rep</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>, <span class="at">length.out =</span> <span class="fu">nrow</span>(tracts)))</span>
+<span id="cb12-60"><a href="#cb12-60" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-61"><a href="#cb12-61" aria-hidden="true" tabindex="-1"></a>cv_rmse <span class="ot">&lt;-</span> <span class="cf">function</span>(f, data, <span class="at">log_outcome =</span> <span class="cn">FALSE</span>) {</span>
+<span id="cb12-62"><a href="#cb12-62" aria-hidden="true" tabindex="-1"></a>  preds <span class="ot">&lt;-</span> <span class="fu">numeric</span>(<span class="fu">nrow</span>(data))</span>
+<span id="cb12-63"><a href="#cb12-63" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (k <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>) {</span>
+<span id="cb12-64"><a href="#cb12-64" aria-hidden="true" tabindex="-1"></a>    m <span class="ot">&lt;-</span> <span class="fu">lm</span>(f, <span class="at">data =</span> data[folds <span class="sc">!=</span> k, ])</span>
+<span id="cb12-65"><a href="#cb12-65" aria-hidden="true" tabindex="-1"></a>    p <span class="ot">&lt;-</span> <span class="fu">predict</span>(m, <span class="at">newdata =</span> data[folds <span class="sc">==</span> k, ])</span>
+<span id="cb12-66"><a href="#cb12-66" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (log_outcome) p <span class="ot">&lt;-</span> <span class="fu">exp</span>(p) <span class="co"># Return predictions to dollars.</span></span>
+<span id="cb12-67"><a href="#cb12-67" aria-hidden="true" tabindex="-1"></a>    preds[folds <span class="sc">==</span> k] <span class="ot">&lt;-</span> p</span>
+<span id="cb12-68"><a href="#cb12-68" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb12-69"><a href="#cb12-69" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sqrt</span>(<span class="fu">mean</span>((data<span class="sc">$</span>rent <span class="sc">-</span> preds)<span class="sc">^</span><span class="dv">2</span>))</span>
+<span id="cb12-70"><a href="#cb12-70" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb12-71"><a href="#cb12-71" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb12-72"><a href="#cb12-72" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-73"><a href="#cb12-73" aria-hidden="true" tabindex="-1"></a>Every candidate model must use the same folds for a fair comparison. This helper assumes <span class="in">`data`</span> has the same row count and order as the data used to create <span class="in">`folds`</span>; rebuild the folds if those rows change. The examples in this note depend on the class <span class="in">`tracts`</span> object and are not run when this note is rendered.</span>
+<span id="cb12-74"><a href="#cb12-74" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-75"><a href="#cb12-75" aria-hidden="true" tabindex="-1"></a><span class="fu">### 3. Log Transformations</span></span>
+<span id="cb12-76"><a href="#cb12-76" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-77"><a href="#cb12-77" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Why log a predictor?</span></span>
+<span id="cb12-78"><a href="#cb12-78" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-79"><a href="#cb12-79" aria-hidden="true" tabindex="-1"></a>Income is often right-skewed. <span class="in">`log(income)`</span> compresses high values and makes equal *proportional* changes approximately equally spaced. A $20,000 change from $20,000 to $40,000 is economically different from a $20,000 change from $180,000 to $200,000, even though their absolute differences match.</span>
+<span id="cb12-80"><a href="#cb12-80" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-81"><a href="#cb12-81" aria-hidden="true" tabindex="-1"></a><span class="in">~~~r</span></span>
+<span id="cb12-82"><a href="#cb12-82" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(tracts, <span class="fu">aes</span>(income)) <span class="sc">+</span> <span class="fu">geom_histogram</span>(<span class="at">bins =</span> <span class="dv">40</span>)</span>
+<span id="cb12-83"><a href="#cb12-83" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(tracts, <span class="fu">aes</span>(<span class="fu">log</span>(income))) <span class="sc">+</span> <span class="fu">geom_histogram</span>(<span class="at">bins =</span> <span class="dv">40</span>)</span>
+<span id="cb12-84"><a href="#cb12-84" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb12-85"><a href="#cb12-85" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-86"><a href="#cb12-86" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Four common model forms</span></span>
+<span id="cb12-87"><a href="#cb12-87" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-88"><a href="#cb12-88" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Model form <span class="pp">|</span> Formula example <span class="pp">|</span> Coefficient interpretation <span class="pp">|</span></span>
+<span id="cb12-89"><a href="#cb12-89" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|---|</span></span>
+<span id="cb12-90"><a href="#cb12-90" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Level–level <span class="pp">|</span> <span class="in">`y ~ x`</span> <span class="pp">|</span> A one-unit increase in X corresponds to a $\beta$-unit change in Y. <span class="pp">|</span></span>
+<span id="cb12-91"><a href="#cb12-91" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Level–log <span class="pp">|</span> <span class="in">`y ~ log(x)`</span> <span class="pp">|</span> A 1% increase in X corresponds to approximately a $\beta/100$-unit change in Y. <span class="pp">|</span></span>
+<span id="cb12-92"><a href="#cb12-92" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Log–level <span class="pp">|</span> <span class="in">`log(y) ~ x`</span> <span class="pp">|</span> A one-unit increase in X corresponds to approximately a $100\beta$% change in Y. <span class="pp">|</span></span>
+<span id="cb12-93"><a href="#cb12-93" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Log–log <span class="pp">|</span> <span class="in">`log(y) ~ log(x)`</span> <span class="pp">|</span> A 1% increase in X corresponds to approximately a $\beta$% change in Y; $\beta$ is an elasticity. <span class="pp">|</span></span>
+<span id="cb12-94"><a href="#cb12-94" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-95"><a href="#cb12-95" aria-hidden="true" tabindex="-1"></a>For <span class="in">`rent ~ log(income) + ...`</span>, suppose the estimated income coefficient is **502.1787**. A 1% income increase is associated with about **$5.02** higher predicted monthly rent. For a 10% increase, use the exact log change:</span>
+<span id="cb12-96"><a href="#cb12-96" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-97"><a href="#cb12-97" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb12-98"><a href="#cb12-98" aria-hidden="true" tabindex="-1"></a>502.1787\log(1.10)\approx\$47.86.</span>
+<span id="cb12-99"><a href="#cb12-99" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb12-100"><a href="#cb12-100" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-101"><a href="#cb12-101" aria-hidden="true" tabindex="-1"></a>For <span class="in">`log(rent) ~ log(income) + ...`</span>, a coefficient of **0.36334** means that a 1% income increase is associated with approximately a **0.363%** rent increase. In a log–level model, the exact percentage change for a one-unit increase in X is $100(e^\beta-1)$%, rather than exactly $100\beta$%.</span>
+<span id="cb12-102"><a href="#cb12-102" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-103"><a href="#cb12-103" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Zeros and negative values</span></span>
+<span id="cb12-104"><a href="#cb12-104" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-105"><a href="#cb12-105" aria-hidden="true" tabindex="-1"></a><span class="in">`log(0)`</span> is <span class="in">`-Inf`</span>. For nonnegative counts such as crimes, trees, or 311 calls, <span class="in">`log1p(x)`</span> computes $\log(1+x)$ and retains zero observations:</span>
+<span id="cb12-106"><a href="#cb12-106" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-107"><a href="#cb12-107" aria-hidden="true" tabindex="-1"></a><span class="in">~~~r</span></span>
+<span id="cb12-108"><a href="#cb12-108" aria-hidden="true" tabindex="-1"></a><span class="fu">log</span>(<span class="dv">0</span>)</span>
+<span id="cb12-109"><a href="#cb12-109" aria-hidden="true" tabindex="-1"></a><span class="fu">log1p</span>(<span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">10</span>, <span class="dv">100</span>))</span>
+<span id="cb12-110"><a href="#cb12-110" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb12-111"><a href="#cb12-111" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-112"><a href="#cb12-112" aria-hidden="true" tabindex="-1"></a>For small counts, the ordinary percentage-change interpretation of <span class="in">`log(x)`</span> does not transfer exactly to <span class="in">`log1p(x)`</span>. Negative values require a transformation chosen for the substantive data context.</span>
+<span id="cb12-113"><a href="#cb12-113" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-114"><a href="#cb12-114" aria-hidden="true" tabindex="-1"></a><span class="fu">#### A logged outcome must be evaluated in dollars</span></span>
+<span id="cb12-115"><a href="#cb12-115" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-116"><a href="#cb12-116" aria-hidden="true" tabindex="-1"></a>A training residual RMSE of about **0.1885** for `log(rent)` is on a log scale. It cannot be compared directly with a training residual RMSE of about **$259.55** for an unlogged rent model. To compare predictive accuracy, return each logged prediction to dollars, then compute CV RMSE against observed <span class="in">`rent`</span>:</span>
+<span id="cb12-117"><a href="#cb12-117" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-118"><a href="#cb12-118" aria-hidden="true" tabindex="-1"></a><span class="in">~~~r</span></span>
+<span id="cb12-119"><a href="#cb12-119" aria-hidden="true" tabindex="-1"></a>f_logy <span class="ot">&lt;-</span> <span class="fu">log</span>(rent) <span class="sc">~</span> <span class="fu">log</span>(income) <span class="sc">+</span> pct_renter <span class="sc">+</span></span>
+<span id="cb12-120"><a href="#cb12-120" aria-hidden="true" tabindex="-1"></a>  bldg_age <span class="sc">+</span> dist_ch_mi</span>
+<span id="cb12-121"><a href="#cb12-121" aria-hidden="true" tabindex="-1"></a><span class="fu">cv_rmse</span>(f_logy, tracts, <span class="at">log_outcome =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb12-122"><a href="#cb12-122" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb12-123"><a href="#cb12-123" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-124"><a href="#cb12-124" aria-hidden="true" tabindex="-1"></a>Because $\exp(E<span class="co">[</span><span class="ot">\log Y</span><span class="co">]</span>)\neq E<span class="co">[</span><span class="ot">Y</span><span class="co">]</span>$, simply exponentiating a fitted log outcome does not automatically give an unbiased prediction of mean rent; the note's back-transformation is for comparison on the original dollar scale.</span>
+<span id="cb12-125"><a href="#cb12-125" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-126"><a href="#cb12-126" aria-hidden="true" tabindex="-1"></a><span class="fu">### 4. Squared Terms and Curvature</span></span>
+<span id="cb12-127"><a href="#cb12-127" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-128"><a href="#cb12-128" aria-hidden="true" tabindex="-1"></a>If a flexible smooth on a scatterplot bends while a straight <span class="in">`geom_smooth(method = "lm")`</span> line misses that pattern, a quadratic term may help:</span>
+<span id="cb12-129"><a href="#cb12-129" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-130"><a href="#cb12-130" aria-hidden="true" tabindex="-1"></a><span class="in">~~~r</span></span>
+<span id="cb12-131"><a href="#cb12-131" aria-hidden="true" tabindex="-1"></a>f_sq <span class="ot">&lt;-</span> rent <span class="sc">~</span> <span class="fu">log</span>(income) <span class="sc">+</span> pct_renter <span class="sc">+</span> bldg_age <span class="sc">+</span></span>
+<span id="cb12-132"><a href="#cb12-132" aria-hidden="true" tabindex="-1"></a>  <span class="fu">I</span>(bldg_age<span class="sc">^</span><span class="dv">2</span>) <span class="sc">+</span> dist_ch_mi</span>
+<span id="cb12-133"><a href="#cb12-133" aria-hidden="true" tabindex="-1"></a>m_sq <span class="ot">&lt;-</span> <span class="fu">lm</span>(f_sq, <span class="at">data =</span> tracts)</span>
+<span id="cb12-134"><a href="#cb12-134" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb12-135"><a href="#cb12-135" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-136"><a href="#cb12-136" aria-hidden="true" tabindex="-1"></a>In an R formula, <span class="in">`I(bldg_age^2)`</span> means the literal square; <span class="in">`^`</span> otherwise has special formula syntax. For $Y=\beta_0+\beta_1x+\beta_2x^2$, the marginal slope at a particular $x$ is $\beta_1+2\beta_2x$. Do not interpret $\beta_1$ or $\beta_2$ in isolation as a constant effect. A positive linear term with a negative square makes an inverted U; a negative linear term with a positive square makes a U.</span>
+<span id="cb12-137"><a href="#cb12-137" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-138"><a href="#cb12-138" aria-hidden="true" tabindex="-1"></a>The turning point is $x^*=-\beta_1/(2\beta_2)$. In the class example, the building-age coefficients were about $-28.00445$ and $+0.1823244$, giving a minimum around **76.8 years**. That is near the upper end of the observed age range of roughly 5–85 years. The pre-1940 Census category is encoded as “1939 or earlier,” which bunches old buildings together; this fitted curve is not a natural law. Predictions far outside the observed age range can be implausible.</span>
+<span id="cb12-139"><a href="#cb12-139" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-140"><a href="#cb12-140" aria-hidden="true" tabindex="-1"></a><span class="fu">### 5. Categorical Variables and Reference Groups</span></span>
+<span id="cb12-141"><a href="#cb12-141" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-142"><a href="#cb12-142" aria-hidden="true" tabindex="-1"></a>Use categorical features for naturally distinct groups, such as zoning, planning district, or housing type. A numeric variable can also be grouped if the relationship seems to change in steps rather than smoothly. For example:</span>
+<span id="cb12-143"><a href="#cb12-143" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-144"><a href="#cb12-144" aria-hidden="true" tabindex="-1"></a><span class="in">~~~r</span></span>
+<span id="cb12-145"><a href="#cb12-145" aria-hidden="true" tabindex="-1"></a>tracts <span class="ot">&lt;-</span> tracts <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(</span>
+<span id="cb12-146"><a href="#cb12-146" aria-hidden="true" tabindex="-1"></a>  <span class="at">renter_band =</span> <span class="fu">cut</span>(</span>
+<span id="cb12-147"><a href="#cb12-147" aria-hidden="true" tabindex="-1"></a>    pct_renter,</span>
+<span id="cb12-148"><a href="#cb12-148" aria-hidden="true" tabindex="-1"></a>    <span class="at">breaks =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">33</span>, <span class="dv">66</span>, <span class="dv">100</span>),</span>
+<span id="cb12-149"><a href="#cb12-149" aria-hidden="true" tabindex="-1"></a>    <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"Mostly owners"</span>, <span class="st">"Mixed"</span>, <span class="st">"Mostly renters"</span>),</span>
+<span id="cb12-150"><a href="#cb12-150" aria-hidden="true" tabindex="-1"></a>    <span class="at">include.lowest =</span> <span class="cn">TRUE</span></span>
+<span id="cb12-151"><a href="#cb12-151" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb12-152"><a href="#cb12-152" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb12-153"><a href="#cb12-153" aria-hidden="true" tabindex="-1"></a>tracts <span class="sc">%&gt;%</span> <span class="fu">st_drop_geometry</span>() <span class="sc">%&gt;%</span> <span class="fu">count</span>(renter_band)</span>
+<span id="cb12-154"><a href="#cb12-154" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb12-155"><a href="#cb12-155" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-156"><a href="#cb12-156" aria-hidden="true" tabindex="-1"></a>The three example bands contain **88**, **210**, and **79** tracts. <span class="in">`cut()`</span> uses numeric break points, <span class="in">`case_when()`</span> supports custom rules, and <span class="in">`factor()`</span> tells R to treat values as categories. With an intercept and $k$ categories, the model normally uses $k-1$ dummy variables, generated by <span class="in">`model.matrix()`</span>.</span>
+<span id="cb12-157"><a href="#cb12-157" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-158"><a href="#cb12-158" aria-hidden="true" tabindex="-1"></a>If <span class="in">`Core`</span> is the reference in a distance-ring model, coefficients <span class="in">`ringInner = -122.2774`</span> and <span class="in">`ringOuter = -164.1935`</span> mean that, holding other features fixed, predicted rent is about **$122.28 lower in Inner** and **$164.19 lower in Outer** than in Core. They do *not* mean that rent in Outer is negative. Changing the reference group changes coefficient comparisons, not the fitted predictions:</span>
+<span id="cb12-159"><a href="#cb12-159" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-160"><a href="#cb12-160" aria-hidden="true" tabindex="-1"></a><span class="in">~~~r</span></span>
+<span id="cb12-161"><a href="#cb12-161" aria-hidden="true" tabindex="-1"></a>tracts_r <span class="ot">&lt;-</span> tracts <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">ring =</span> <span class="fu">relevel</span>(ring, <span class="at">ref =</span> <span class="st">"Outer"</span>))</span>
+<span id="cb12-162"><a href="#cb12-162" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb12-163"><a href="#cb12-163" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-164"><a href="#cb12-164" aria-hidden="true" tabindex="-1"></a>Binning sacrifices information: replacing continuous <span class="in">`dist_ch_mi`</span> with <span class="in">`Core`</span>/<span class="in">`Inner`</span>/<span class="in">`Outer`</span> treats distinct distances within the same band alike. If the true relationship is smooth, this can worsen prediction.</span>
+<span id="cb12-165"><a href="#cb12-165" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-166"><a href="#cb12-166" aria-hidden="true" tabindex="-1"></a><span class="fu">### 6. Interactions: Different Slopes by Group</span></span>
+<span id="cb12-167"><a href="#cb12-167" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-168"><a href="#cb12-168" aria-hidden="true" tabindex="-1"></a>An interaction is useful when the relationship between X and Y differs by group:</span>
+<span id="cb12-169"><a href="#cb12-169" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-170"><a href="#cb12-170" aria-hidden="true" tabindex="-1"></a><span class="in">~~~r</span></span>
+<span id="cb12-171"><a href="#cb12-171" aria-hidden="true" tabindex="-1"></a>f_int <span class="ot">&lt;-</span> rent <span class="sc">~</span> <span class="fu">log</span>(income) <span class="sc">*</span> ring <span class="sc">+</span> pct_renter <span class="sc">+</span></span>
+<span id="cb12-172"><a href="#cb12-172" aria-hidden="true" tabindex="-1"></a>  bldg_age <span class="sc">+</span> <span class="fu">I</span>(bldg_age<span class="sc">^</span><span class="dv">2</span>)</span>
+<span id="cb12-173"><a href="#cb12-173" aria-hidden="true" tabindex="-1"></a>m_int <span class="ot">&lt;-</span> <span class="fu">lm</span>(f_int, <span class="at">data =</span> tracts)</span>
+<span id="cb12-174"><a href="#cb12-174" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb12-175"><a href="#cb12-175" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-176"><a href="#cb12-176" aria-hidden="true" tabindex="-1"></a>In R formula syntax, <span class="in">`a * b`</span> expands to <span class="in">`a + b + a:b`</span>, whereas <span class="in">`a:b`</span> adds only the interaction. With Core as the reference, the <span class="in">`log(income)`</span> slope is **653.6974**. The Inner interaction changes it by **−219.1028**, giving about **434.59**; the Outer interaction changes it by **−244.4214**, giving about **409.28**. Because the outcome is rent in dollars and income is logged, a 1% income increase corresponds to approximately the group-specific slope divided by 100 dollars of monthly rent.</span>
+<span id="cb12-177"><a href="#cb12-177" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-178"><a href="#cb12-178" aria-hidden="true" tabindex="-1"></a>Interacting every feature with every group increases the number of parameters quickly. With only about 377 tracts, that can overfit.</span>
+<span id="cb12-179"><a href="#cb12-179" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-180"><a href="#cb12-180" aria-hidden="true" tabindex="-1"></a><span class="fu">### 7. Place Fixed Effects</span></span>
+<span id="cb12-181"><a href="#cb12-181" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-182"><a href="#cb12-182" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 7.1 District intercepts</span></span>
+<span id="cb12-183"><a href="#cb12-183" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-184"><a href="#cb12-184" aria-hidden="true" tabindex="-1"></a>A place fixed effect gives each district its own intercept through a categorical district variable. It can absorb shared, unmeasured background differences—such as reputation, schools, transit, and history—but cannot reveal which of those mechanisms matters. The class example assigns each tract to the Philadelphia planning district with which it has the greatest area overlap, across **18 planning districts**:</span>
+<span id="cb12-185"><a href="#cb12-185" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-186"><a href="#cb12-186" aria-hidden="true" tabindex="-1"></a><span class="in">~~~r</span></span>
+<span id="cb12-187"><a href="#cb12-187" aria-hidden="true" tabindex="-1"></a>tracts <span class="ot">&lt;-</span> tracts <span class="sc">%&gt;%</span></span>
+<span id="cb12-188"><a href="#cb12-188" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_join</span>(</span>
+<span id="cb12-189"><a href="#cb12-189" aria-hidden="true" tabindex="-1"></a>    districts <span class="sc">%&gt;%</span> <span class="fu">select</span>(<span class="at">district =</span> dist_name),</span>
+<span id="cb12-190"><a href="#cb12-190" aria-hidden="true" tabindex="-1"></a>    <span class="at">largest =</span> <span class="cn">TRUE</span></span>
+<span id="cb12-191"><a href="#cb12-191" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb12-192"><a href="#cb12-192" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">district =</span> <span class="fu">factor</span>(district))</span>
+<span id="cb12-193"><a href="#cb12-193" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-194"><a href="#cb12-194" aria-hidden="true" tabindex="-1"></a>f_fe <span class="ot">&lt;-</span> rent <span class="sc">~</span> <span class="fu">log</span>(income) <span class="sc">+</span> pct_renter <span class="sc">+</span> bldg_age <span class="sc">+</span></span>
+<span id="cb12-195"><a href="#cb12-195" aria-hidden="true" tabindex="-1"></a>  <span class="fu">I</span>(bldg_age<span class="sc">^</span><span class="dv">2</span>) <span class="sc">+</span> district</span>
+<span id="cb12-196"><a href="#cb12-196" aria-hidden="true" tabindex="-1"></a>m_fe <span class="ot">&lt;-</span> <span class="fu">lm</span>(f_fe, <span class="at">data =</span> tracts)</span>
+<span id="cb12-197"><a href="#cb12-197" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb12-198"><a href="#cb12-198" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-199"><a href="#cb12-199" aria-hidden="true" tabindex="-1"></a>In this example, the <span class="in">`log(income)`</span> coefficient fell from about **519.74** before district effects to **427.39** after them. The earlier estimate mixed between-district and within-district differences; with district intercepts, the coefficient primarily compares tracts *within* districts. This change does not automatically establish a causal effect.</span>
+<span id="cb12-200"><a href="#cb12-200" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-201"><a href="#cb12-201" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 7.2 The unseen-category problem in CV</span></span>
+<span id="cb12-202"><a href="#cb12-202" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-203"><a href="#cb12-203" aria-hidden="true" tabindex="-1"></a>A fixed-effect model cannot directly predict a district level that did not appear in its training fold. <span class="in">`count(district)`</span> revealed that **Lower South had only one tract**; a 10-fold CV round could place that one tract entirely in validation, causing <span class="in">`predict()`</span> to fail. The class solution merged districts with fewer than ten tracts into a nearby district for a CV-ready variable:</span>
+<span id="cb12-204"><a href="#cb12-204" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-205"><a href="#cb12-205" aria-hidden="true" tabindex="-1"></a><span class="in">~~~r</span></span>
+<span id="cb12-206"><a href="#cb12-206" aria-hidden="true" tabindex="-1"></a>small <span class="ot">&lt;-</span> tracts <span class="sc">%&gt;%</span> <span class="fu">st_drop_geometry</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb12-207"><a href="#cb12-207" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(district) <span class="sc">%&gt;%</span> <span class="fu">filter</span>(n <span class="sc">&lt;</span> <span class="dv">10</span> <span class="sc">|</span> <span class="fu">is.na</span>(district)) <span class="sc">%&gt;%</span></span>
+<span id="cb12-208"><a href="#cb12-208" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pull</span>(district)</span>
+<span id="cb12-209"><a href="#cb12-209" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-210"><a href="#cb12-210" aria-hidden="true" tabindex="-1"></a>is_small <span class="ot">&lt;-</span> tracts<span class="sc">$</span>district <span class="sc">%in%</span> small <span class="sc">|</span> <span class="fu">is.na</span>(tracts<span class="sc">$</span>district)</span>
+<span id="cb12-211"><a href="#cb12-211" aria-hidden="true" tabindex="-1"></a>nearest <span class="ot">&lt;-</span> <span class="fu">st_nearest_feature</span>(tracts[is_small, ], tracts[<span class="sc">!</span>is_small, ])</span>
+<span id="cb12-212"><a href="#cb12-212" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-213"><a href="#cb12-213" aria-hidden="true" tabindex="-1"></a>tracts <span class="ot">&lt;-</span> tracts <span class="sc">%&gt;%</span></span>
+<span id="cb12-214"><a href="#cb12-214" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">district_cv =</span> <span class="fu">as.character</span>(district))</span>
+<span id="cb12-215"><a href="#cb12-215" aria-hidden="true" tabindex="-1"></a>tracts<span class="sc">$</span>district_cv[is_small] <span class="ot">&lt;-</span></span>
+<span id="cb12-216"><a href="#cb12-216" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as.character</span>(tracts<span class="sc">$</span>district[<span class="sc">!</span>is_small][nearest])</span>
+<span id="cb12-217"><a href="#cb12-217" aria-hidden="true" tabindex="-1"></a>tracts <span class="ot">&lt;-</span> tracts <span class="sc">%&gt;%</span></span>
+<span id="cb12-218"><a href="#cb12-218" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">district_cv =</span> <span class="fu">factor</span>(district_cv))</span>
+<span id="cb12-219"><a href="#cb12-219" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb12-220"><a href="#cb12-220" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-221"><a href="#cb12-221" aria-hidden="true" tabindex="-1"></a>At least about **10 observations per group** is a useful 10-fold CV rule of thumb; more is safer. Other approaches include combining rare levels into “Other” (for example, with <span class="in">`fct_lump_min()`</span>), although that may not make geographic sense, or using coarser spatial units. District IDs such as 1–18 are labels, not a continuous numeric predictor, so they must be represented as a factor.</span>
+<span id="cb12-222"><a href="#cb12-222" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-223"><a href="#cb12-223" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 7.3 Fixed effects versus measured spatial features</span></span>
+<span id="cb12-224"><a href="#cb12-224" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-225"><a href="#cb12-225" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**District fixed effects** answer which districts differ in baseline rent, capturing leftover shared district variation. They do not explain the mechanism or generalize directly to a new district.</span>
+<span id="cb12-226"><a href="#cb12-226" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Spatial features** such as distance to transit or parks and nearby crime describe measurable attributes. They can reveal associations with those attributes and may generalize conditionally to new locations.</span>
+<span id="cb12-227"><a href="#cb12-227" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-228"><a href="#cb12-228" aria-hidden="true" tabindex="-1"></a>Both can be used together: measured spatial features may explain some differences, while district effects absorb remaining shared district variation. The class note points ahead to nearby-neighbor (kNN) features on October 16.</span>
+<span id="cb12-229"><a href="#cb12-229" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-230"><a href="#cb12-230" aria-hidden="true" tabindex="-1"></a><span class="fu">### 8. Model Comparison: 10-Fold CV RMSE</span></span>
+<span id="cb12-231"><a href="#cb12-231" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-232"><a href="#cb12-232" aria-hidden="true" tabindex="-1"></a>All values below are approximate class results in **dollars**, using the same ten folds. Lower CV RMSE means better out-of-sample rent prediction in this comparison.</span>
+<span id="cb12-233"><a href="#cb12-233" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-234"><a href="#cb12-234" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Model <span class="pp">|</span> Feature change <span class="pp">|</span> 10-fold CV RMSE <span class="pp">|</span></span>
+<span id="cb12-235"><a href="#cb12-235" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|---:|</span></span>
+<span id="cb12-236"><a href="#cb12-236" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> m0 <span class="pp">|</span> Baseline <span class="pp">|</span> $265 <span class="pp">|</span></span>
+<span id="cb12-237"><a href="#cb12-237" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> m1 <span class="pp">|</span> <span class="in">`log(income)`</span> <span class="pp">|</span> $265 <span class="pp">|</span></span>
+<span id="cb12-238"><a href="#cb12-238" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> m2 <span class="pp">|</span> <span class="in">`log(rent)`</span> + <span class="in">`log(income)`</span>; predictions back-transformed <span class="pp">|</span> $263 <span class="pp">|</span></span>
+<span id="cb12-239"><a href="#cb12-239" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> m3 <span class="pp">|</span> <span class="in">`bldg_age^2`</span> in a level-rent model <span class="pp">|</span> $261 <span class="pp">|</span></span>
+<span id="cb12-240"><a href="#cb12-240" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> m4 <span class="pp">|</span> <span class="in">`ring`</span> replaces <span class="in">`dist_ch_mi`</span> <span class="pp">|</span> $265 <span class="pp">|</span></span>
+<span id="cb12-241"><a href="#cb12-241" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> m5 <span class="pp">|</span> <span class="in">`log(income)`</span> × <span class="in">`ring`</span> <span class="pp">|</span> $264 <span class="pp">|</span></span>
+<span id="cb12-242"><a href="#cb12-242" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> m6 <span class="pp">|</span> District fixed effects, with rare districts merged with nearby districts <span class="pp">|</span> **$256** <span class="pp">|</span></span>
+<span id="cb12-243"><a href="#cb12-243" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-244"><a href="#cb12-244" aria-hidden="true" tabindex="-1"></a>The m2 model and the later m3–m6 models are separate candidate specifications, not a single formula built cumulatively at every step. **m6 has the lowest CV RMSE in this example**, but that does not imply that fixed effects are always the best choice.</span>
+<span id="cb12-245"><a href="#cb12-245" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-246"><a href="#cb12-246" aria-hidden="true" tabindex="-1"></a><span class="fu">## Proving R Works</span></span>
+<span id="cb12-247"><a href="#cb12-247" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-248"><a href="#cb12-248" aria-hidden="true" tabindex="-1"></a><span class="in">~~~{r}</span></span>
+<span id="cb12-249"><a href="#cb12-249" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: session-info</span></span>
+<span id="cb12-250"><a href="#cb12-250" aria-hidden="true" tabindex="-1"></a><span class="co">#| echo: true</span></span>
+<span id="cb12-251"><a href="#cb12-251" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-252"><a href="#cb12-252" aria-hidden="true" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span>
+<span id="cb12-253"><a href="#cb12-253" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb12-254"><a href="#cb12-254" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-255"><a href="#cb12-255" aria-hidden="true" tabindex="-1"></a><span class="fu">## Reflection</span></span>
+<span id="cb12-256"><a href="#cb12-256" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-257"><a href="#cb12-257" aria-hidden="true" tabindex="-1"></a>This week's central lesson is that engineering a feature changes both what a linear model can represent and how its coefficients should be read. I should compare candidate models on the same unseen-data folds and on the same outcome scale, while being careful about lost information from bins, overfitting from interactions, and unseen categories in place fixed effects.</span>
+<span id="cb12-258"><a href="#cb12-258" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-259"><a href="#cb12-259" aria-hidden="true" tabindex="-1"></a><span class="fu">## Questions I Still Have</span></span>
+<span id="cb12-260"><a href="#cb12-260" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-261"><a href="#cb12-261" aria-hidden="true" tabindex="-1"></a>None</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></div>
+</div></div></div></div></div>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

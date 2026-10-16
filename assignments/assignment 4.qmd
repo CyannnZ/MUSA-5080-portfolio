@@ -52,6 +52,7 @@ library(tidyverse)
 library(tidycensus)
 library(sf)
 library(caret)
+library(patchwork)
 
 Sys.getenv("CENSUS_API_KEY") != ""   # should print TRUE
 ```
@@ -116,6 +117,7 @@ Choose **three to five ACS predictors** for your baseline model. They should be 
 
 ```{r}
 #| label: pull
+#| output: false
 philly_tracts <- get_acs(
   geography = "tract",
   state = "PA",
@@ -177,6 +179,7 @@ summary(philly_tracts$y_cv)
 ```{r}
 philly_tracts %>%
   mutate(reliability = case_when(
+    is.na(y_cv) ~ "Undefined",
     y_cv < 12  ~ "High",
     y_cv <= 40 ~ "Moderate",
     TRUE       ~ "Low"
@@ -198,7 +201,7 @@ If more than about a third of tracts have low reliability, consider a different 
 
 **Answer (2–3 sentences):** What is your outcome, why would an agency want to predict it, and how reliable is it?
 
-*Your answer:* My outcome is the percentage of households with no vehicle in each Philadelphia census tract, based on the 2019–2023 ACS. A transportation agency could use this measure to identify areas where residents may need better transit access. The reliability check classifies 29 tracts as high, 313 as moderate, and 66 as low reliability (16.2% low), so I will proceed with this outcome.
+*Your answer:* My outcome is the percentage of households with no vehicle in each Philadelphia census tract, based on the 2019–2023 ACS. A transportation agency could use this measure to identify areas where residents may need better transit access. Among 388 tracts with defined outcomes, 29 have high, 313 moderate, and 46 low reliability (11.9% low); the other 20 have no defined percentage because they have no households, so I will proceed with this outcome.
 
 ### 1C: Decide which tracts to model
 
@@ -605,24 +608,76 @@ If a category has only a handful of tracts, its coefficient is unstable, and in 
 Try **at least one of each**: a log, a squared term, and a categorical variable. Choose which variables to transform based on your plots, not at random. Log each model.
 
 ```{r}
+summary(tracts$median_income)
+
+ggplot(tracts, aes(x = median_income)) +
+  geom_histogram(bins = 30) +
+  theme_minimal()
+
+ggplot(tracts, aes(x = log1p(median_income))) +
+  geom_histogram(bins = 30) +
+  theme_minimal()
+```
+
+```{r}
 #| label: my-transforms
-f_log <- y ~ ___
+f_log <- y ~ log1p(median_income) + renter_pct +
+  poverty_pct + trolley_per_sqmi
 
 model_log <- model_log %>%
-  add_row(model = "m_", added = "log of ___",
+  add_row(model = "m5", added = "log of median",
           cv_rmse = cv_rmse(f_log, tracts),
-          notes = "___")
+          notes = "Replaced raw income in m3 with log1p(income)")
 
+model_log
+```
+
+```{r}
+f_dist <- y ~ median_income + renter_pct + poverty_pct +
+  trolley_per_sqmi + dist_ch_mi
+
+model_log <- model_log %>%
+  add_row(model = "m6", added = "City Hall distance",
+          cv_rmse = cv_rmse(f_dist, tracts),
+          notes = "Linear reference for distance transformations")
+```
+
+```{r}
 # squared term
+f_sq <- y ~ median_income + renter_pct + poverty_pct +
+  trolley_per_sqmi + dist_ch_mi + I(dist_ch_mi^2)
 
+model_log <- model_log %>%
+  add_row(model = "m7", added = "Squared City Hall distance",
+          cv_rmse = cv_rmse(f_sq, tracts),
+          notes = "Compare with linear distance in m6")
+
+model_log
+```
+
+```{r}
+tracts %>% st_drop_geometry() %>% count(ring)
+
+f_cat <- y ~ median_income + renter_pct + poverty_pct +
+  trolley_per_sqmi + ring
+
+m_cat_own <- lm(f_cat, data = tracts)
+summary(m_cat_own)
+```
+
+```{r}
 # categorical
+model_log <- model_log %>%
+  add_row(model = "m8", added = "City Hall distance categories",
+          cv_rmse = cv_rmse(f_cat, tracts),
+          notes = "Core is the reference category; compare with m6")
 
 model_log
 ```
 
 **Answer:** Which transformation helped most? For your categorical variable, write one sentence reading one of its coefficients correctly, naming the reference level.
 
-*Your answer:*
+*Your answer:* The squared City Hall distance helped most: compared with the linear distance model, it lowered CV RMSE from 9.57 to 9.18 percentage points. Logging median income helped only slightly, while grouping City Hall distance into categories performed slightly worse than using the continuous distance. In the categorical model, with Core as the reference and the other predictors held constant, Outer tracts have a predicted no-vehicle household share 18.97 percentage points lower than Core tracts.
 
 ---
 
@@ -632,15 +687,16 @@ Combine the features and transformations that earned their place, **judged by CV
 
 ```{r}
 #| label: final
-f_final <- y ~ ___
+f_final <- y ~ median_income + renter_pct + poverty_pct +
+  trolley_per_sqmi + dist_ch_mi + I(dist_ch_mi^2)
 
 m_final <- lm(f_final, data = tracts)
 summary(m_final)
 
 model_log <- model_log %>%
-  add_row(model = "final", added = "___",
+  add_row(model = "final", added = "Trolley density and squared City Hall distance",
           cv_rmse = cv_rmse(f_final, tracts),
-          notes = "___")
+          notes = "Same specification as m7; lowest tested CV RMSE")
 
 model_log
 ```
@@ -651,16 +707,30 @@ model_log
 #| label: resid-map-2
 tracts <- tracts %>% mutate(resid_final = residuals(m_final))
 
-ggplot(tracts) +
-  geom_sf(aes(fill = resid_final), color = NA) +
-  scale_fill_gradient2(low = "#2166ac", mid = "grey95", high = "#b2182b", midpoint = 0) +
+resid_limit <- max(abs(c(tracts$resid_m1, tracts$resid_final)), na.rm = TRUE)
+
+p1 <- ggplot(tracts) +
+  geom_sf(aes(fill = resid_m1), color = NA) +
+  scale_fill_gradient2(low = "#2166ac", mid = "grey95",
+                       high = "#b2182b", midpoint = 0,
+                       limits = c(-resid_limit, resid_limit)) +
   theme_void() +
-  labs(title = "Final model: where it's wrong",
-       subtitle = "Red = actual higher than predicted",
-       fill = "Residual")
+  labs(title = "Baseline model", fill = "Residual")
+
+p2 <- ggplot(tracts) +
+  geom_sf(aes(fill = resid_final), color = NA) +
+  scale_fill_gradient2(low = "#2166ac", mid = "grey95",
+                       high = "#b2182b", midpoint = 0,
+                       limits = c(-resid_limit, resid_limit)) +
+  theme_void() +
+  labs(title = "Final model", fill = "Residual")
+
+p1 + p2
 ```
 
 Put your two residual maps side by side, or put them next to each other in the rendered document. Did the clusters from Part 2C shrink? Where did they stay?
+
+The broad residual clusters from the baseline model became less continuous in the final model, especially the positive residuals in the southwest and the negative residuals in the northeast. A smaller cluster of positive residuals remains near the center of the city, so the final model still underpredicts car-free households in some central tracts.
 
 ### Are the biggest misses in the least reliable tracts?
 
@@ -685,6 +755,15 @@ Answer in prose, drawing on your model log (incorporate our words of the day for
 4. **How much of the remaining error might be uncertainty or statistical noise?** Use your last plot.
 
 *Your answer:*
+Distance to City Hall helped most. Adding it to the model with ACS predictors and trolley-station density lowered CV RMSE from 11.44 to 9.57 percentage points. Distance may capture differences in access to jobs and transportation across the city. Trolley-station count was the most disappointing feature: it raised CV RMSE from 11.94 to 12.20. A count does not measure how frequently transit runs, and many tracts have no trolley station.
+
+Adding a squared distance term lowered CV RMSE further to 9.18, suggesting that the relationship with distance is curved rather than a constant slope. These predictive associations do not show that distance itself causes households to own fewer vehicles.
+
+β̂ reading: Holding the other predictors fixed, a one-percentage-point higher renter share is associated with a 0.18-percentage-point higher predicted share of households without a vehicle. ŷ reading: For two otherwise identical tracts with renter shares of 40% and 50%, the model predicts a 1.80-percentage-point higher no-vehicle share for the tract with 50% renters.
+
+The final map still shows a group of positive residuals near the center of the city, where the model underpredicts the no-vehicle share. I would next measure transit service frequency, which station counts cannot capture. I would seek an archived 2023 schedule snapshot through [SEPTA’s GTFS developer page](https://www3.septa.org/developer/) to keep the new feature within the assignment’s time window.
+
+The last plot does not show a consistent increase in prediction errors as the outcome’s CV rises. Some large misses occur even where CV is relatively low, while there are few observations at very high CV. ACS sampling uncertainty may account for some remaining error, but this plot cannot tell us what fraction is statistical noise. Missing predictors may also matter.
 
 ---
 
