@@ -1,350 +1,247 @@
 ---
-title: "Week 5: Working with Spatial Data in R"
-description: "Working with table joins, sf objects, coordinate reference systems, projections, spatial relationships, and maps in R."
-date: 2026-09-18
+title: "Week 6: Feature Engineering"
+description: "Transformations, nonlinear terms, categories, interactions, place fixed effects, and 10-fold cross-validation for rent prediction."
+date: 2026-10-09
 ---
 
 ## What We Did
 
-This week introduced the foundations of working with spatial data in R. We covered joining Census tables by GEOID, working with `sf` objects and their geometry columns, interpreting coordinate reference systems (CRS) and map projections, using spatial predicates and joins, measuring distance, filtering and modifying geometries, and mapping with `geom_sf()`.
+This week, we engineered features for linear regression using 2023 ACS five-year data for Philadelphia census tracts. We compared log transformations, squared terms, categorical variables, interactions, and planning-district fixed effects. For each candidate model, we focused on prediction in dollars using the same 10-fold cross-validation (CV) split and its root mean squared error (RMSE).
 
 ## Key Concepts
 
-- Table joins require a shared key that represents the same geography in both tables.
-- An `sf` object is a data frame with a geometry column that stores spatial shape and location.
-- A CRS tells us what coordinate values mean; geometry and CRS must be interpreted together.
-- `st_set_crs()` labels coordinates, while `st_transform()` converts coordinates.
-- Spatial joins use location rather than a shared ID, and `geom_sf()` draws the geometry column automatically.
+- A linear model is linear in the features supplied to it. Transforming those features allows nonlinear relationships, group differences, and spatial heterogeneity.
+- A coefficient's interpretation depends on whether the outcome or predictor is logged, squared, or interacted with a category.
+- Evaluate a model of `log(rent)` by back-transforming predictions to dollars *before* calculating RMSE against `rent`.
+- Categorical variables use a reference group; changing that group changes coefficient comparisons, not fitted predictions.
+- Fixed effects capture shared group-level differences, but they do not identify their causes and cannot directly predict a category absent from training.
+- For prediction, compare candidate models with out-of-sample CV RMSE. A low p-value or strong training fit is not enough, and an association is not necessarily causal.
 
 ## Note
 
-### 1. Table joins
+### 1. What Is Feature Engineering?
 
-Two tables can be joined when they share the same key, usually GEOID.
+A linear regression can draw only a straight-line relationship through the features it receives. Feature engineering means deciding what information and transformations to supply. A model can remain linear in its coefficients while using `log(income)`, `I(bldg_age^2)`, distance bands, interactions, or district indicators to represent relationships that are not simply straight lines in the original variables.
 
-~~~r
-left_join(income_23, income_15, by = "GEOID")
-~~~
+For prediction, the practical question is whether the new features lower error on unseen observations. For interpretation, the practical question is what a one-unit change in each *transformed* feature means. Neither a predictive improvement nor a regression coefficient by itself establishes causation.
 
-Example:
+### 2. Data, Baseline Model, and Fixed CV Folds
 
-| `income_23` |  | `income_15` |  |
-|---|---:|---|---:|
-| GEOID | med_inc_23 | GEOID | med_inc_15 |
-| 100 | 82000 | 100 | 61000 |
-| 200 | 31500 | 200 | 27000 |
-| 300 | 45000 | 400 | 39000 |
+The class example uses approximately 377 Philadelphia census tracts from the 2023 ACS five-year data. The tract geometries are projected to EPSG:2272, whose units are feet. The variables are:
 
-After a left join:
+| Variable | Meaning |
+|---|---|
+| `rent` | Median gross rent, in dollars |
+| `income` | Median household income |
+| `pct_renter` | Percentage of renter-occupied households |
+| `bldg_age` | Building age, calculated as `2023 - yr_builtE` |
+| `dist_ch_mi` | Distance from the tract to City Hall, in miles |
 
-| GEOID | med_inc_23 | med_inc_15 |
-|---|---:|---:|
-| 100 | 82000 | 61000 |
-| 200 | 31500 | 27000 |
-| 300 | 45000 | NA |
-
-`left_join()`: keep all rows from the left table.
-
-`inner_join()`: keep only matches in both tables.
-
-`full_join()`: keep everything from both tables.
-
-Important: the join key must represent the same thing in both tables. Same column name does not necessarily mean the same geography. Check geographic level, vintage, and GEOID formatting before joining.
-
-Census tract boundaries and GEOIDs can change over time, so two years may have different row counts. Always check before comparing years.
-
-### 2. Spatial data and sf
-
-`sf` = Simple Features.
-
-An `sf` object is a normal data frame with one additional column:
-
-| GEOID | med_inc_23 | med_inc_15 | geometry |
-|---|---:|---:|---|
-| 100 | 82000 | 61000 | POLYGON(...) |
-| 200 | 31500 | 27000 | POLYGON(...) |
-| 300 | 45000 | NA | POLYGON(...) |
-
-The geometry column stores the spatial shape and location.
-
-Common formats:
-
-- `.shp`
-- `.gdb`
-
-When using `get_acs()`:
+The baseline specification and result log are:
 
 ~~~r
-get_acs(..., geometry = TRUE)
+f0 <- rent ~ income + pct_renter + bldg_age + dist_ch_mi
+m0 <- lm(f0, data = tracts)
+model_log <- tibble(
+  model = "m0",
+  added = "baseline",
+  cv_rmse = cv_rmse(f0, tracts)
+)
+model_log
 ~~~
 
-returns ACS attributes together with geometry.
+`f0` is a formula, not a fitted model; `lm()` fits it. `summary(m0)` reports estimated coefficients. Here, `model_log` is a table of model results—“log” does not mean logarithm. Baseline 10-fold CV RMSE was approximately **$265**; lower is better.
 
-Geometry is "sticky." In an `sf` object, the geometry column usually stays attached even after `select()`.
-
-If geometry is no longer needed:
+The comparison uses one reproducible set of ten folds. In each round, nine folds train the model and the remaining fold supplies unseen validation observations:
 
 ~~~r
-st_drop_geometry()
+set.seed(5080)
+folds <- sample(rep(1:10, length.out = nrow(tracts)))
+
+cv_rmse <- function(f, data, log_outcome = FALSE) {
+  preds <- numeric(nrow(data))
+  for (k in 1:10) {
+    m <- lm(f, data = data[folds != k, ])
+    p <- predict(m, newdata = data[folds == k, ])
+    if (log_outcome) p <- exp(p) # Return predictions to dollars.
+    preds[folds == k] <- p
+  }
+  sqrt(mean((data$rent - preds)^2))
+}
 ~~~
 
-### 3. Coordinate Reference Systems (CRS)
+Every candidate model must use the same folds for a fair comparison. This helper assumes `data` has the same row count and order as the data used to create `folds`; rebuild the folds if those rows change. The examples in this note depend on the class `tracts` object and are not run when this note is rendered.
 
-A CRS tells us what spatial coordinates mean.
+### 3. Log Transformations
 
-Geographic vs. Projected:
+#### Why log a predictor?
 
-| Type | Coordinates | Typical units |
+Income is often right-skewed. `log(income)` compresses high values and makes equal *proportional* changes approximately equally spaced. A $20,000 change from $20,000 to $40,000 is economically different from a $20,000 change from $180,000 to $200,000, even though their absolute differences match.
+
+~~~r
+ggplot(tracts, aes(income)) + geom_histogram(bins = 40)
+ggplot(tracts, aes(log(income))) + geom_histogram(bins = 40)
+~~~
+
+#### Four common model forms
+
+| Model form | Formula example | Coefficient interpretation |
 |---|---|---|
-| Geographic CRS | longitude / latitude | degrees |
-| Projected CRS | x / y | meters or feet |
+| Level–level | `y ~ x` | A one-unit increase in X corresponds to a $\beta$-unit change in Y. |
+| Level–log | `y ~ log(x)` | A 1% increase in X corresponds to approximately a $\beta/100$-unit change in Y. |
+| Log–level | `log(y) ~ x` | A one-unit increase in X corresponds to approximately a $100\beta$% change in Y. |
+| Log–log | `log(y) ~ log(x)` | A 1% increase in X corresponds to approximately a $\beta$% change in Y; $\beta$ is an elasticity. |
 
-Examples from class:
-
-| EPSG | CRS | Units |
-|---:|---|---|
-| 4326 | WGS 84 | degrees |
-| 4269 | NAD83 | degrees |
-| 5070 | Albers Equal Area | meters |
-| 2272 | Pennsylvania South State Plane | US feet |
-
-Geometry gives the coordinates; CRS tells us how to interpret them.
-
-#### Datum
-
-An ellipsoid is the mathematical model used to approximate Earth's shape; a datum connects and anchors that model to the real Earth.
-
-> Ellipsoid = mathematical model of Earth's shape  
-> Datum = reference framework that positions that model on Earth
-
-Class example:
-
-~~~text
-Clarke 1866 + Meades Ranch, Kansas
-            ↓
-           NAD27
-            ↓
-           NAD83
-            ↓
-           WGS84
-~~~
-
-NAD83 and WGS84 are Earth-centered reference systems; WGS84 is widely used by GPS.
-
-### 4. Map projections
-
-The Earth is curved, but maps are flat, so projection always introduces distortion.
-
-The four properties discussed in class are:
-
-- Shape
-- Area
-- Distance
-- Direction
-
-A projection cannot preserve all four perfectly everywhere.
-
-#### Projection families
-
-- Cylindrical
-- Transverse Cylindrical
-- Conic
-
-The line where a projection surface touches the Earth is the line of tangency; distortion is minimized there.
-
-What can be preserved?
-
-- Conformal: preserves local shape / angles
-- Equal-area: preserves area
-- Equidistant: preserves specified distances
-
-Example:
-
-~~~text
-Lambert Conformal Conic
-        ↑          ↑
-   preserved     projection
-    property       family
-~~~
-
-### 5. UTM
-
-UTM = Universal Transverse Mercator.
-
-The Earth is divided into 60 zones, each about 6° of longitude wide.
+For `rent ~ log(income) + ...`, suppose the estimated income coefficient is **502.1787**. A 1% income increase is associated with about **$5.02** higher predicted monthly rent. For a 10% increase, use the exact log change:
 
 $$
-360° / 6° = 60\ \text{zones}
+502.1787\log(1.10)\approx\$47.86.
 $$
 
-Each zone uses a Transverse Mercator projection.
+For `log(rent) ~ log(income) + ...`, a coefficient of **0.36334** means that a 1% income increase is associated with approximately a **0.363%** rent increase. In a log–level model, the exact percentage change for a one-unit increase in X is $100(e^\beta-1)$%, rather than exactly $100\beta$%.
 
-Coordinates are Easting (x) and Northing (y), and are measured in meters.
+#### Zeros and negative values
 
-The central meridian uses a false easting of 500,000 m, helping avoid negative Easting values.
-
-### 6. `st_set_crs()` vs. `st_transform()`
-
-These are not the same.
-
-#### `st_set_crs()`
+`log(0)` is `-Inf`. For nonnegative counts such as crimes, trees, or 311 calls, `log1p(x)` computes $\log(1+x)$ and retains zero observations:
 
 ~~~r
-st_set_crs(x, 2272)
+log(0)
+log1p(c(0, 1, 10, 100))
 ~~~
 
-Adds or corrects the CRS label. The coordinate numbers do not change.
+For small counts, the ordinary percentage-change interpretation of `log(x)` does not transfer exactly to `log1p(x)`. Negative values require a transformation chosen for the substantive data context.
 
-Use it only when the existing coordinates are already in that CRS but the metadata are missing or wrong.
+#### A logged outcome must be evaluated in dollars
 
-#### `st_transform()`
+A training residual RMSE of about **0.1885** for `log(rent)` is on a log scale. It cannot be compared directly with a training residual RMSE of about **$259.55** for an unlogged rent model. To compare predictive accuracy, return each logged prediction to dollars, then compute CV RMSE against observed `rent`:
 
 ~~~r
-st_transform(x, 2272)
+f_logy <- log(rent) ~ log(income) + pct_renter +
+  bldg_age + dist_ch_mi
+cv_rmse(f_logy, tracts, log_outcome = TRUE)
 ~~~
 
-Actually converts the coordinates into a new CRS.
+Because $\exp(E[\log Y])\neq E[Y]$, simply exponentiating a fitted log outcome does not automatically give an unbiased prediction of mean rent; the note's back-transformation is for comparison on the original dollar scale.
 
-Memory aid: `set_crs` = label; `transform` = convert.
+### 4. Squared Terms and Curvature
 
-### 7. Spatial relationships
-
-Suppose:
-
-- A and B share a boundary.
-- C lies completely inside A.
-
-#### `st_intersects()`
-
-Asks whether two geometries share any point.
-
-| Relationship | Result |
-|---|---|
-| A-B | TRUE |
-| A-C | TRUE |
-| A-A | TRUE |
-
-#### `st_touches()`
-
-Asks whether geometries touch only along their boundaries, without interior overlap.
-
-| Relationship | Result |
-|---|---|
-| A-B | TRUE |
-| A-C | FALSE |
-| A-A | FALSE |
-
-#### `st_within()`
-
-Asks whether one geometry is inside another.
+If a flexible smooth on a scatterplot bends while a straight `geom_smooth(method = "lm")` line misses that pattern, a quadratic term may help:
 
 ~~~r
-st_within(C, A) = TRUE
-st_within(A, C) = FALSE
+f_sq <- rent ~ log(income) + pct_renter + bldg_age +
+  I(bldg_age^2) + dist_ch_mi
+m_sq <- lm(f_sq, data = tracts)
 ~~~
 
-`within` is directional.
+In an R formula, `I(bldg_age^2)` means the literal square; `^` otherwise has special formula syntax. For $Y=\beta_0+\beta_1x+\beta_2x^2$, the marginal slope at a particular $x$ is $\beta_1+2\beta_2x$. Do not interpret $\beta_1$ or $\beta_2$ in isolation as a constant effect. A positive linear term with a negative square makes an inverted U; a negative linear term with a positive square makes a U.
 
-### 8. Spatial join: `st_join()`
+The turning point is $x^*=-\beta_1/(2\beta_2)$. In the class example, the building-age coefficients were about $-28.00445$ and $+0.1823244$, giving a minimum around **76.8 years**. That is near the upper end of the observed age range of roughly 5–85 years. The pre-1940 Census category is encoded as “1939 or earlier,” which bunches old buildings together; this fitted curve is not a natural law. Predictions far outside the observed age range can be implausible.
+
+### 5. Categorical Variables and Reference Groups
+
+Use categorical features for naturally distinct groups, such as zoning, planning district, or housing type. A numeric variable can also be grouped if the relationship seems to change in steps rather than smoothly. For example:
 
 ~~~r
-st_join(stations, tracts)
+tracts <- tracts %>% mutate(
+  renter_band = cut(
+    pct_renter,
+    breaks = c(0, 33, 66, 100),
+    labels = c("Mostly owners", "Mixed", "Mostly renters"),
+    include.lowest = TRUE
+  )
+)
+tracts %>% st_drop_geometry() %>% count(renter_band)
 ~~~
 
-This is a join by location, not by a shared ID.
+The three example bands contain **88**, **210**, and **79** tracts. `cut()` uses numeric break points, `case_when()` supports custom rules, and `factor()` tells R to treat values as categories. With an intercept and $k$ categories, the model normally uses $k-1$ dummy variables, generated by `model.matrix()`.
 
-For each station point, R finds the tract containing it and attaches tract attributes such as median income.
-
-Conceptually:
-
-~~~text
-station point
-     ↓ where is it?
-tract polygon
-     ↓
-station + tract attributes
-~~~
-
-Compare:
-
-- `left_join()` → join by WHAT / shared key
-- `st_join()` → join by WHERE / spatial relationship
-
-If one feature in `x` matches multiple features in `y`, `st_join()` can create multiple output rows. Always check the row count after a spatial join.
-
-### 9. Distance
+If `Core` is the reference in a distance-ring model, coefficients `ringInner = -122.2774` and `ringOuter = -164.1935` mean that, holding other features fixed, predicted rent is about **$122.28 lower in Inner** and **$164.19 lower in Outer** than in Core. They do *not* mean that rent in Outer is negative. Changing the reference group changes coefficient comparisons, not the fitted predictions:
 
 ~~~r
-st_distance(stations, tracts)
+tracts_r <- tracts %>% mutate(ring = relevel(ring, ref = "Outer"))
 ~~~
 
-`st_distance()` normally returns a matrix.
+Binning sacrifices information: replacing continuous `dist_ch_mi` with `Core`/`Inner`/`Outer` treats distinct distances within the same band alike. If the true relationship is smooth, this can worsen prediction.
 
-If there are 5 stations and 5 tracts, the output contains all station-tract distance combinations.
+### 6. Interactions: Different Slopes by Group
 
-Before measuring distance, use an appropriate projected CRS and check the units.
-
-### 10. Filtering and changing geometry
-
-How many tracts are near (for example, within 1/2 mile of) a station? A buffer can create the "near" area around stations.
-
-#### `st_filter()`
+An interaction is useful when the relationship between X and Y differs by group:
 
 ~~~r
-st_filter(tracts, service_area)
+f_int <- rent ~ log(income) * ring + pct_renter +
+  bldg_age + I(bldg_age^2)
+m_int <- lm(f_int, data = tracts)
 ~~~
 
-Keeps the original tract shapes that satisfy the spatial relationship. Use it when the goal is to select / count features.
+In R formula syntax, `a * b` expands to `a + b + a:b`, whereas `a:b` adds only the interaction. With Core as the reference, the `log(income)` slope is **653.6974**. The Inner interaction changes it by **−219.1028**, giving about **434.59**; the Outer interaction changes it by **−244.4214**, giving about **409.28**. Because the outcome is rent in dollars and income is logged, a 1% income increase corresponds to approximately the group-specific slope divided by 100 dollars of monthly rent.
 
-#### `st_intersection()`
+Interacting every feature with every group increases the number of parameters quickly. With only about 377 tracts, that can overfit.
+
+### 7. Place Fixed Effects
+
+#### 7.1 District intercepts
+
+A place fixed effect gives each district its own intercept through a categorical district variable. It can absorb shared, unmeasured background differences—such as reputation, schools, transit, and history—but cannot reveal which of those mechanisms matters. The class example assigns each tract to the Philadelphia planning district with which it has the greatest area overlap, across **18 planning districts**:
 
 ~~~r
-st_intersection(tracts, service_area)
+tracts <- tracts %>%
+  st_join(
+    districts %>% select(district = dist_name),
+    largest = TRUE
+  ) %>%
+  mutate(district = factor(district))
+
+f_fe <- rent ~ log(income) + pct_renter + bldg_age +
+  I(bldg_age^2) + district
+m_fe <- lm(f_fe, data = tracts)
 ~~~
 
-Returns only the overlapping pieces. The shapes change. Use it when the goal is to measure the actual common area.
+In this example, the `log(income)` coefficient fell from about **519.74** before district effects to **427.39** after them. The earlier estimate mixed between-district and within-district differences; with district intercepts, the coefficient primarily compares tracts *within* districts. This change does not automatically establish a causal effect.
 
-#### `st_union()`
+#### 7.2 The unseen-category problem in CV
+
+A fixed-effect model cannot directly predict a district level that did not appear in its training fold. `count(district)` revealed that **Lower South had only one tract**; a 10-fold CV round could place that one tract entirely in validation, causing `predict()` to fail. The class solution merged districts with fewer than ten tracts into a nearby district for a CV-ready variable:
 
 ~~~r
-st_union(service_areas)
+small <- tracts %>% st_drop_geometry() %>%
+  count(district) %>% filter(n < 10 | is.na(district)) %>%
+  pull(district)
+
+is_small <- tracts$district %in% small | is.na(tracts$district)
+nearest <- st_nearest_feature(tracts[is_small, ], tracts[!is_small, ])
+
+tracts <- tracts %>%
+  mutate(district_cv = as.character(district))
+tracts$district_cv[is_small] <-
+  as.character(tracts$district[!is_small][nearest])
+tracts <- tracts %>%
+  mutate(district_cv = factor(district_cv))
 ~~~
 
-Combines multiple geometries into one overall geometry.
+At least about **10 observations per group** is a useful 10-fold CV rule of thumb; more is safer. Other approaches include combining rare levels into “Other” (for example, with `fct_lump_min()`), although that may not make geographic sense, or using coarser spatial units. District IDs such as 1–18 are labels, not a continuous numeric predictor, so they must be represented as a factor.
 
-- `st_buffer()` → create a distance zone / new polygon
-- `st_filter()` → keep whole features
-- `st_intersection()` → keep only common areas
-- `st_union()` → combine geometries
+#### 7.3 Fixed effects versus measured spatial features
 
-### 11. Mapping with `geom_sf()`
+- **District fixed effects** answer which districts differ in baseline rent, capturing leftover shared district variation. They do not explain the mechanism or generalize directly to a new district.
+- **Spatial features** such as distance to transit or parks and nearby crime describe measurable attributes. They can reveal associations with those attributes and may generalize conditionally to new locations.
 
-~~~r
-ggplot(philly_tracts) +
-  geom_sf(aes(fill = med_incE), color = NA) +
-  scale_fill_viridis_c(labels = scales::dollar) +
-  theme_void()
-~~~
+Both can be used together: measured spatial features may explain some differences, while district effects absorb remaining shared district variation. The class note points ahead to nearby-neighbor (kNN) features on October 16.
 
-`geom_sf()` draws the geometry column automatically.
+### 8. Model Comparison: 10-Fold CV RMSE
 
-- `geometry` → where / what shape
-- `med_incE` → fill color
+All values below are approximate class results in **dollars**, using the same ten folds. Lower CV RMSE means better out-of-sample rent prediction in this comparison.
 
-If you see:
+| Model | Feature change | 10-fold CV RMSE |
+|---|---|---:|
+| m0 | Baseline | $265 |
+| m1 | `log(income)` | $265 |
+| m2 | `log(rent)` + `log(income)`; predictions back-transformed | $263 |
+| m3 | `bldg_age^2` in a level-rent model | $261 |
+| m4 | `ring` replaces `dist_ch_mi` | $265 |
+| m5 | `log(income)` × `ring` | $264 |
+| m6 | District fixed effects, with rare districts merged with nearby districts | **$256** |
 
-~~~text
-stat_sf() requires the following missing aesthetics: geometry
-~~~
-
-the object is probably not an `sf` object or no longer has geometry.
-
-Check:
-
-~~~r
-class(philly_tracts)
-names(philly_tracts)
-~~~
+The m2 model and the later m3–m6 models are separate candidate specifications, not a single formula built cumulatively at every step. **m6 has the lowest CV RMSE in this example**, but that does not imply that fixed effects are always the best choice.
 
 ## Proving R Works
 
@@ -357,8 +254,8 @@ sessionInfo()
 
 ## Reflection
 
-This week clarified that spatial data are not just tables with an extra column. The geometry and CRS together determine how locations, distance, area, and spatial relationships should be interpreted. I also found the distinction between a table join and a spatial join useful: one matches by a shared key, while the other matches by location.
+This week's central lesson is that engineering a feature changes both what a linear model can represent and how its coefficients should be read. I should compare candidate models on the same unseen-data folds and on the same outcome scale, while being careful about lost information from bins, overfitting from interactions, and unseen categories in place fixed effects.
 
 ## Questions I Still Have
 
-None.
+None
