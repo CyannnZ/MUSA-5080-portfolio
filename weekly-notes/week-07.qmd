@@ -1,0 +1,298 @@
+---
+title: "Week 7: R Code and Moran's I Worked Example"
+description: "Housing-sale data, spatial crime features, residual maps, spatial lags, and a step-by-step calculation of Moran's I."
+date: 2026-10-16
+---
+
+## What We Did
+
+We moved from census-tract polygons to individual housing-sale points, built spatial predictors, fitted a house-price model, and examined its residuals. The workflow connects house locations to spatial features, predicted prices, neighboring residuals, Moran's I, and model revisions. These notes focus on understanding the R code, numerical examples, and calculations.
+
+## Key Concepts
+
+- A buffer count measures events within a fixed radius; k-nearest-neighbor (kNN) distance measures the mean distance to a fixed number of events.
+- A residual is the observed price minus the predicted price: positive means underprediction, and negative means overprediction.
+- A spatial lag is a weighted average of neighboring values. House-to-crime distances and house-to-house neighbor weights serve different purposes.
+- Moran's I measures whether neighboring deviations tend to have the same sign. Its value depends on the spatial weights.
+- Residual clustering can suggest missing spatial predictors, neighborhood effects, or interactions. Evaluate revisions using both residual diagnostics and CV RMSE.
+- Predictors must be available at prediction time; using held-out sale prices in a spatial lag can leak target information.
+
+## Note
+
+### 1. From Tracts to Houses: Same Methods, Different Spatial Units
+
+| Feature | Earlier: Census tracts | Now: Houses |
+|---|---|---|
+| Observation | Census tract polygon | Individual housing-sale point |
+| Sample size | Approximately 400 | Tens of thousands |
+| Count feature | Crimes within a tract | Crimes within a 660-foot buffer around a house |
+| Nearest feature | Distance to the nearest station | Mean distance to the five nearest crimes |
+| Place feature | Distance to City Hall | Still usable |
+
+A buffer is a polygon drawn around a point. EPSG:2272 uses feet, so a buffer distance of 660 means **660 feet**.
+
+### 2. Property Data and Cleaning
+
+~~~r
+sales <- carto_get(
+  "SELECT the_geom, parcel_number, sale_price, sale_date,
+          total_livable_area, number_of_bedrooms,
+          number_of_bathrooms, year_built, interior_condition
+   FROM opa_properties_public
+   WHERE category_code = '1'
+     AND sale_date >= '2023-01-01'
+     AND sale_date < '2025-01-01'"
+) %>% st_transform(2272)
+
+nrow(sales)                   # 37866
+summary(sales$sale_price)
+~~~
+
+In SQL, `SELECT` chooses columns, `FROM` names the table, and `WHERE` filters the property category and the 2023-2024 sale dates. `st_transform(2272)` projects coordinates into a system measured in feet.
+
+The raw sale-price distribution has a **median of $190,000**, a **mean of $263,697**, and a **maximum of $15,428,633**. Very low prices may reflect family transfers for $1, judicial sales, or LLC restructuring rather than ordinary market transactions.
+
+~~~r
+sales %>% st_drop_geometry() %>%
+  count(price_band = cut(
+    sale_price,
+    c(-Inf, 1000, 10000, 50000, Inf),
+    labels = c("< $1k", "$1k-10k", "$10k-50k", "$50k+")
+  ))
+~~~
+
+The four price bands contain **9,171 / 199 / 1,295 / 27,201** records, respectively. `cut()` bins prices, `count()` counts records within each group, and `st_drop_geometry()` temporarily removes geometry from this tabulation.
+
+~~~r
+sales <- sales %>%
+  filter(
+    sale_price >= 10000,
+    total_livable_area > 0,
+    !st_is_empty(.)
+  ) %>%
+  mutate(
+    year_built = na_if(as.numeric(year_built), 0),
+    age = 2024 - year_built
+  ) %>%
+  filter(!is.na(age), !is.na(number_of_bathrooms))
+
+nrow(sales)                   # 27551
+~~~
+
+Multiple conditions within `filter()` are combined with AND: keep sales of at least $10,000, positive livable area, and nonempty geometries. `na_if(..., 0)` converts an unknown construction year coded as zero into `NA`. Age is 2024 minus the construction year; `!is.na()` retains observations with the required features.
+
+Cleaning reduces the sample from **37,866 to 27,551**, removing 10,315 records. These are analytical screening rules, not a universal definition of a market sale. Keep a record of exclusions and their reasons.
+
+### 3. Spatial Crime Features: Counts and kNN Distances
+
+~~~r
+violent <- carto_get(
+  "SELECT the_geom FROM incidents_part1_part2
+   WHERE dispatch_date >= '2023-01-01'
+     AND dispatch_date < '2025-01-01'
+     AND text_general_code IN (
+       'Aggravated Assault Firearm',
+       'Aggravated Assault No Firearm',
+       'Robbery Firearm', 'Robbery No Firearm')"
+) %>%
+  filter(!st_is_empty(.)) %>%
+  st_transform(2272)
+
+sales <- sales %>%
+  mutate(
+    violent_660ft = lengths(
+      st_intersects(st_buffer(., 660), violent)
+    ),
+    violent_knn5 = sapply(
+      st_nn(
+        ., violent, k = 5,
+        returnDist = TRUE, progress = FALSE
+      )$dist,
+      mean
+    )
+  )
+~~~
+
+#### 3.1 Buffer Count
+
+1. `st_buffer(., 660)` draws a 660-foot-radius buffer around each house.
+2. `st_intersects(..., violent)` finds crime points intersecting each buffer.
+3. `lengths()` counts the matched events for each house: for example, house A might have three and house B zero.
+
+#### 3.2 kNN Distance
+
+1. `st_nn()` finds the five nearest crime events to each house; `returnDist = TRUE` returns their distances.
+2. `$dist` extracts the list of distances.
+3. `sapply(..., mean)` averages each house's five distances. Distances of 100, 200, 300, 400, and 500 feet give **300 feet**.
+
+| Comparison | Buffer count | kNN distance |
+|---|---|---|
+| What stays fixed? | Radius: 660 feet | Number of nearest crime points: five |
+| What is calculated? | Number of events | Mean distance |
+| Typical limitation | Many houses may have zero events | Does not directly measure event counts |
+
+To decide which feature predicts prices better, hold the other model terms and CV folds constant and compare **CV RMSE**.
+
+### 4. The Model and Its Residuals
+
+~~~r
+m1 <- lm(
+  sale_price ~ total_livable_area +
+    number_of_bathrooms + age + violent_knn5,
+  data = sales
+)
+
+sales <- sales %>%
+  mutate(
+    pred = predict(m1, sales),
+    resid = sale_price - pred
+  )
+~~~
+
+**Residual = actual price - predicted price.**
+
+- Actual $350,000, predicted $300,000: residual **+$50,000**, so the model underpredicts.
+- Actual $250,000, predicted $300,000: residual **-$50,000**, so the model overpredicts.
+
+These are fitted residuals from the training data for diagnosis; they do not measure test RMSE.
+
+### 5. Residual Maps: Where Are Errors Concentrated?
+
+~~~r
+ggplot(sales) +
+  geom_sf(aes(color = resid), size = 0.4, alpha = 0.6) +
+  scale_color_gradient2(
+    low = "#2166ac", mid = "grey90", high = "#b2182b",
+    midpoint = 0, limits = c(-300000, 300000),
+    oob = scales::squish
+  ) +
+  theme_void() +
+  labs(color = "Residual ($)", title = "Where the model is wrong")
+~~~
+
+**Red points are positive residuals (underprediction); blue points are negative residuals (overprediction).** `alpha` controls transparency, `size` controls point size, and `midpoint = 0` assigns the neutral color to zero error.
+
+`scales::squish` displays residuals beyond +/-$300,000 using the endpoint colors; it does not change the underlying values. A red cluster may suggest an omitted neighborhood price premium. The map supplies a diagnostic clue, not proof of its cause.
+
+### 6. Spatial Lag: How Wrong Are the Neighbors on Average?
+
+~~~r
+coords <- st_coordinates(sales)
+w_knn <- nb2listw(
+  knn2nb(knearneigh(coords, k = 5)),
+  style = "W"
+)
+sales$resid_lag <- lag.listw(w_knn, sales$resid)
+~~~
+
+`st_coordinates()` extracts house coordinates. `knearneigh()` finds the five nearest other houses, and `knn2nb()` converts those relationships into a neighbor list. `nb2listw(..., style = "W")` row-standardizes the weights so each row sums to one. `lag.listw()` calculates each house's weighted mean neighboring residual.
+
+Keep these two features distinct:
+
+- `violent_knn5`: mean distance from a house to its five nearest **crime points**.
+- `w_knn`: neighbor relationships among **houses**, used to average their residuals.
+
+If five neighbors have residuals of +$30,000, +$20,000, +$10,000, -$5,000, and +$15,000, their mean is **+$14,000**. This is different from the focal house's own residual.
+
+~~~r
+ggplot(sales, aes(resid, resid_lag)) +
+  geom_point(alpha = 0.15, size = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "#b2182b") +
+  coord_cartesian(
+    xlim = c(-3e5, 3e5),
+    ylim = c(-2e5, 2e5)
+  )
+~~~
+
+The horizontal axis shows the house's residual; the vertical axis shows its neighbors' mean residual. Concentration in the upper-right and lower-left suggests that similar errors occur near one another. With row-standardized weights, the same complete sample, and a fitted intercept, the scatterplot's regression slope equals Moran's I.
+
+### 7. Moran's I: Formula and a Five-House Calculation
+
+Let $x_i$ be the residual for house $i$, $\bar{x}$ the mean residual, $w_{ij}$ the neighbor weight, and $n$ the number of houses. Moran's I measures whether neighboring deviations tend to point in the same direction:
+
+$$
+I =
+\frac{n}{\sum_i\sum_j w_{ij}}
+\frac{\sum_i\sum_j w_{ij}(x_i-\bar{x})(x_j-\bar{x})}
+{\sum_i(x_i-\bar{x})^2}.
+$$
+
+Consider five houses arranged in a chain: **A - B - C - D - E**. Residuals, in thousands of dollars, are +100, +80, +20, -50, and -70. Their mean is:
+
+$$
+\bar{x}=\frac{100+80+20-50-70}{5}=16.
+$$
+
+| House | Residual ($1,000s) | Deviation from the mean |
+|---|---:|---:|
+| A | +100 | +84 |
+| B | +80 | +64 |
+| C | +20 | +4 |
+| D | -50 | -66 |
+| E | -70 | -86 |
+
+The products of neighboring deviations are:
+
+| Neighbor pair | Product |
+|---|---:|
+| A-B | $84\times64=5{,}376$ |
+| B-C | $64\times4=256$ |
+| C-D | $4\times(-66)=-264$ |
+| D-E | $(-66)\times(-86)=5{,}676$ |
+
+Each undirected pair enters the formula in both directions, so the weighted numerator is:
+
+$$
+2(5{,}376+256-264+5{,}676)=22{,}088.
+$$
+
+The sum of squared deviations is:
+
+$$
+84^2+64^2+4^2+(-66)^2+(-86)^2=22{,}920.
+$$
+
+There are five houses and four undirected links, giving $n=5$ and total directed weight $\sum_i\sum_jw_{ij}=8$. Therefore:
+
+$$
+I=\frac{5}{8}\frac{22{,}088}{22{,}920}\approx0.60.
+$$
+
+A positive I indicates clustering of similar values; a value near zero indicates a weak overall spatial pattern; a negative I indicates that neighbors tend to have opposite deviations. This calculation uses **binary adjacency weights** of one for each neighboring pair. The R example uses **row-standardized five-nearest-neighbor weights**, so the two numerical results should not be treated as the same calculation.
+
+### 8. Permutation Testing and Model Diagnosis
+
+~~~r
+mc <- moran.mc(sales$resid, w_knn, nsim = 499)
+mc$statistic   # 0.2605251
+mc$p.value     # 0.002
+~~~
+
+`moran.mc()` randomly rearranges residuals among house locations 499 times, comparing the observed statistic with the permutation distribution. In the Philadelphia example, **I is approximately 0.2605 and p = 0.002**. This is evidence of unusual positive residual clustering under the permutation null; significance does not identify its cause.
+
+When revising the model, check whether residual Moran's I moves closer to zero and whether **CV RMSE also improves**. Persistent spatial underprediction or overprediction may motivate:
+
+- **Spatial predictors:** distances to parks, stations, or crime, and nearby event counts.
+- **Neighborhood fixed effects:** shared neighborhood price premiums.
+- **Interactions:** a relationship between livable area and price that varies by neighborhood.
+
+A spatial-lag regression, $y=\rho Wy+X\beta+\epsilon$, uses neighboring sale prices through $Wy$. Prices for unsold houses may be unknown, and using held-out outcomes can cause data leakage. For this prediction task, prioritize spatial predictors available when the prediction is made.
+
+The R snippets reproduce the note's workflow and assume the class helper functions, packages, and data are available. They are displayed as examples rather than executed during rendering.
+
+## Proving R Works
+
+~~~{r}
+#| label: session-info
+#| echo: true
+
+sessionInfo()
+~~~
+
+## Reflection
+
+Residuals can reveal spatial structure that an overall error measure hides. Mapping errors, calculating neighboring averages, and checking Moran's I help identify where to investigate missing information. Any proposed improvement should also reduce error on unseen data, with predictors that will be available for future houses.
+
+## Questions I Still Have
+
+None
