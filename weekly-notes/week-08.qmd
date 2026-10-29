@@ -1,0 +1,279 @@
+---
+title: "Week 8: Local Moran's I and LISA"
+description: "A five-house calculation, residual quadrants, permutation tests, and LISA maps for diagnosing spatial prediction errors."
+date: 2026-10-23
+---
+
+## What We Did
+
+Week 7 used global Moran's I to summarize spatial dependence in house-price residuals. Week 8 moves from that overall summary to individual locations: where do similar errors occur together, and where does a house differ from its neighbors? We worked through local Moran's I by hand, interpreted the four Moran scatterplot quadrants, and connected LISA maps to model diagnosis and feature engineering.
+
+## Key Concepts
+
+- Global Moran's I summarizes spatial association across the study area; local Moran's I describes each observation's contribution to that pattern.
+- LISA means **Local Indicators of Spatial Association**. Local Moran's I is one member of this family.
+- A positive local statistic indicates same-sign deviations; a negative statistic indicates opposite-sign deviations. The quadrant identifies which combination occurs.
+- High and low refer to the **mean of the analyzed residuals**. Underprediction and overprediction refer to residuals above and below **zero**.
+- A quadrant is a descriptive label. A statistically supported cluster also requires a stated test, significance threshold, and spatial weights definition.
+- Use spatial diagnostics alongside errors in dollars and out-of-sample validation. Removing visible clusters alone does not establish a better predictive model.
+
+## Note
+
+### 1. From a Global Summary to a Local Diagnostic
+
+For each sale, define the residual as:
+
+$$
+e_i = y_i - \hat{y}_i.
+$$
+
+A positive residual means the predicted price was too low; a negative residual means it was too high. A global statistic can reveal an overall tendency for neighboring residuals to resemble one another, but it does not locate that pattern. Local Moran's I helps distinguish a neighborhood of similar errors from an individual property that differs from its surroundings.
+
+This distinction matters for urban analysis. A pocket of underprediction might motivate an investigation of a missing neighborhood amenity, while an isolated unusual sale might first require a data-quality check. Neither pattern identifies its cause by itself.
+
+### 2. Formula: Own Deviation Times Neighboring Deviation
+
+Center the residuals and calculate their mean squared deviation:
+
+$$
+z_i = e_i - \bar e,
+\qquad
+m_2 = \frac{1}{n}\sum_{i=1}^{n}z_i^2.
+$$
+
+For spatial weights $w_{ij}$, local Moran's I is:
+
+$$
+I_i = \frac{z_i}{m_2}\sum_j w_{ij}z_j.
+$$
+
+The spatial lag, $\sum_j w_{ij}z_j$, summarizes neighboring deviations. When each nonempty row of the weights sums to one, it is a weighted neighbor average. With equal weights across neighbors, it is their ordinary average.
+
+The numerator multiplies the house's own deviation by its neighbors' average deviation. Two positives or two negatives produce a positive statistic; opposite signs produce a negative one. Dividing by $m_2$ removes the squared price units, so changing from dollars to thousands of dollars leaves $I_i$ unchanged.
+
+Let $S_0=\sum_i\sum_jw_{ij}$. With the definitions above:
+
+$$
+I = \frac{1}{S_0}\sum_i I_i.
+$$
+
+For row-standardized weights **with no locations lacking neighbors**, $S_0=n$, so global Moran's I is the average of the local values. This identity requires consistent weights, observations, and variance conventions; it should not be assumed for every software setting.
+
+### 3. Worked Example: Five Houses Along a Street
+
+Use houses A through E in a line, with each house linked only to the house immediately before or after it. End houses have one neighbor; interior houses have two. Residuals are in **thousands of dollars**.
+
+The mean residual is:
+
+$$
+\bar e=\frac{100+80+20-50-70}{5}=16.
+$$
+
+| House | Residual $e_i$ | Centered residual $z_i$ | Neighbors | Neighbor average of $z$ |
+|---|---:|---:|---|---:|
+| A | 100 | 84 | B | 64 |
+| B | 80 | 64 | A, C | 44 |
+| C | 20 | 4 | B, D | -1 |
+| D | -50 | -66 | C, E | -41 |
+| E | -70 | -86 | D | -66 |
+
+For example, B's lag is $(84+4)/2=44$. The denominator shared by all houses is:
+
+$$
+m_2=\frac{84^2+64^2+4^2+(-66)^2+(-86)^2}{5}
+=\frac{22{,}920}{5}=4{,}584.
+$$
+
+| House | Own deviation × lag | Local $I_i$ | Descriptive quadrant |
+|---|---:|---:|---|
+| A | $84\times64=5{,}376$ | 1.1728 | High-High |
+| B | $64\times44=2{,}816$ | 0.6143 | High-High |
+| C | $4\times(-1)=-4$ | -0.0009 | High-Low |
+| D | $(-66)\times(-41)=2{,}706$ | 0.5903 | Low-Low |
+| E | $(-86)\times(-66)=5{,}676$ | 1.2382 | Low-Low |
+
+The average local statistic is approximately **0.7229**, equal to global Moran's I under these weights. E has the largest local value even though A has the largest absolute residual: the statistic reflects the product of deviations, rather than ranking prediction errors alone. Local values can exceed one.
+
+C is High-Low because its centered residual is positive and its lag is negative. Its statistic is close to zero, but its quadrant still exists. **These calculations do not test significance**; none of the houses should be declared a statistically significant cluster or outlier from this table alone.
+
+### 4. Four Quadrants and Their Meaning for Residuals
+
+A Moran scatterplot places the centered value on the horizontal axis and its spatial lag on the vertical axis:
+
+| Quadrant | Own deviation | Neighbor lag | Sign of $I_i$ | Pattern to investigate |
+|---|---|---|---|---|
+| High-High (HH) | Positive | Positive | Positive | Similar values above the mean |
+| Low-Low (LL) | Negative | Negative | Positive | Similar values below the mean |
+| High-Low (HL) | Positive | Negative | Negative | A high value among low neighbors |
+| Low-High (LH) | Negative | Positive | Negative | A low value among high neighbors |
+
+If the mean residual is zero, HH indicates neighboring underpredictions and LL indicates neighboring overpredictions. HL and LH identify spatial contrasts that could reflect unusual properties or records.
+
+The zero-mean condition holds for training residuals from ordinary, unweighted OLS with an intercept, apart from numerical precision. It need not hold for test residuals, filtered data, or other models. In the five-house example, C's residual is $+20,000$: it is underpredicted. Its neighbors' average raw residual is $+15,000$, which is also an underprediction, even though the centered lag is $-1,000$. Thus **High-Low does not automatically mean an underpredicted house surrounded by overpredicted houses**.
+
+### 5. From Quadrants to a LISA Cluster Map
+
+A useful map combines the quadrant with evidence from a local test. In a conditional permutation test, the focal value stays fixed while other observed values are reassigned to its neighbor positions. The observed local statistic is compared with the resulting reference distribution.
+
+The R example below uses `localmoran_perm()` and the `mlvar = TRUE` convention, which divides squared deviations by $n$. Its simulation p-value column is documented in the [spdep local Moran reference](https://r-spatial.github.io/spdep/reference/localmoran.html).
+
+For interpretation, keep four questions together:
+
+1. **Which quadrant?** Positive $I_i$ alone cannot distinguish HH from LL.
+2. **How strong is the test evidence?** State the permutation count, test direction, and cutoff.
+3. **How large are the errors?** Inspect residuals in dollars as well as their spatial association.
+4. **Where does the pattern occur?** Compare the cluster map with a residual map and relevant urban features.
+
+Testing many locations creates many opportunities for false positives. Under valid null tests, a nominal 5% cutoff produces an expected false-positive count of about 5% of the true null locations; it does not guarantee that 5% of mapped clusters are false. The workflow uses Benjamini-Hochberg adjustment as an exploratory multiple-testing choice. Spatial dependence and the test setup still matter, and a stricter cutoff alone does not resolve every inference issue.
+
+Results also depend on what counts as a neighbor. Five nearest houses, ten nearest houses, and a fixed distance band represent different spatial scales. Report that choice and examine reasonable alternatives. A nonsignificant location means insufficient evidence under the chosen test, not proof that no pattern exists.
+
+### 6. R Workflow: Align the Data Before Building Weights
+
+The following example assumes `sales` is a cleaned point `sf` object containing the outcome and predictors. It deliberately creates one complete analysis table before fitting the model so residuals, coordinates, and weights share the same rows. Class data are required, so this workflow is displayed rather than executed during rendering.
+
+```r
+library(sf)
+library(dplyr)
+library(spdep)
+library(ggplot2)
+
+analysis <- sales %>%
+  st_transform(2272) %>%
+  filter(
+    !st_is_empty(.),
+    is.finite(sale_price),
+    is.finite(total_livable_area),
+    is.finite(number_of_bathrooms),
+    is.finite(age)
+  )
+
+model <- lm(
+  sale_price ~ total_livable_area + number_of_bathrooms + age,
+  data = st_drop_geometry(analysis),
+  na.action = na.fail
+)
+analysis$resid <- residuals(model)
+
+# Five nearest houses; coordinates and residuals have identical row order.
+# Check coincident points and distance ties before constructing neighbors.
+stopifnot(nrow(analysis) > 5)
+coords <- st_coordinates(analysis)
+nb <- knn2nb(knearneigh(coords, k = 5))
+lw <- nb2listw(nb, style = "W")
+
+set.seed(5080)
+global_test <- moran.mc(analysis$resid, lw, nsim = 999)
+lisa <- localmoran_perm(
+  analysis$resid, lw,
+  nsim = 999, alternative = "two.sided",
+  mlvar = TRUE, iseed = 5080,
+  no_repeat_in_row = TRUE
+)
+
+# Define quadrants explicitly from centered residuals and their spatial lag.
+z <- analysis$resid - mean(analysis$resid)
+lag_z <- lag.listw(lw, z)
+analysis$Ii <- lisa[, "Ii"]
+analysis$p <- lisa[, "Pr(z != E(Ii)) Sim"]
+analysis$p_adj <- p.adjust(analysis$p, method = "BH")
+analysis$quadrant <- case_when(
+  z > 0 & lag_z > 0 ~ "HH",
+  z < 0 & lag_z < 0 ~ "LL",
+  z > 0 & lag_z < 0 ~ "HL",
+  z < 0 & lag_z > 0 ~ "LH",
+  TRUE ~ "On axis"
+)
+analysis$cluster <- ifelse(
+  analysis$p_adj < 0.05,
+  analysis$quadrant,
+  "Not significant"
+)
+
+ggplot(analysis) +
+  geom_sf(aes(color = cluster), size = 0.6) +
+  scale_color_manual(values = c(
+    HH = "#B2182B", LL = "#2166AC",
+    HL = "#EF8A62", LH = "#67A9CF",
+    "On axis" = "#666666", "Not significant" = "#D9D9D9"
+  )) +
+  labs(
+    title = "Local spatial patterns in house-price residuals",
+    subtitle = "5-nearest-neighbor weights; 999 permutations; BH-adjusted p < 0.05",
+    color = "Residual pattern"
+  ) +
+  theme_void()
+```
+
+`style = "W"` creates row-standardized weights, as described in the [spdep weights reference](https://r-spatial.github.io/spdep/reference/nb2listw.html). The default kNN relation is directed: house A can select B without B selecting A. Any symmetrization would change the neighbor definition and should be reported.
+
+This is a **training-residual diagnostic** for the illustrative model. Predictive performance requires validation predictions. When mapping held-out or out-of-fold residuals, keep each residual attached to its original observation and build weights for exactly that analysis set. Permutation maps are exploratory diagnostics; they do not establish a causal explanation for the errors.
+
+### 7. Turn the Map into Model Questions
+
+| Observed pattern | Follow-up investigation |
+|---|---|
+| HH with large positive raw residuals | Are amenities, renovations, or neighborhood premiums missing? |
+| LL with large negative raw residuals | Are vacancy, property condition, disamenities, or sale-record issues missing? |
+| Patterns following neighborhood boundaries | Would place effects or location-specific relationships help? |
+| Isolated HL or LH observations | Are these unusual properties, non-market transactions, or incorrect records? |
+
+These are hypotheses for investigation. Add features that have a substantive rationale and would be available when making a future prediction. Compare candidate models using the same CV folds and outcome scale, then inspect their residual maps again. If the task involves predicting in new areas, spatial validation may be more informative than a random split.
+
+Repeatedly selecting features after inspecting a test set can overfit that test set. Use training or validation diagnostics to develop the model, and preserve an untouched final evaluation set. A reduction in spatial clustering is useful evidence, but it does not compensate for worse predictive accuracy in dollars.
+
+### 8. Policy Connection: Algorithmic Rent Setting
+
+The reference note also discusses RealPage. In a November 24, 2025 announcement, the U.S. Department of Justice described a **proposed settlement** addressing competitors' sensitive information and coordination in rental pricing. The proposal included restrictions on using competitors' nonpublic information in rent recommendations. This is a dated description of that announcement, rather than a claim about the case's current status. See the [DOJ announcement](https://www.justice.gov/opa/pr/justice-department-requires-realpage-end-sharing-competitively-sensitive-information-and).
+
+My policy takeaway is that evaluating a model requires more than checking its prediction error. The data it accesses, its objective, and how people use its recommendations can affect urban outcomes. Anticompetitive information sharing and statistical target leakage are distinct problems, even though both make the boundaries around data use important.
+
+## Proving R Works
+
+This self-contained calculation reproduces the five-house example without downloading data or loading spatial packages.
+
+```{r}
+#| label: five-house-local-moran
+
+e <- c(A = 100, B = 80, C = 20, D = -50, E = -70)
+z <- e - mean(e)
+W <- matrix(0, nrow = 5, ncol = 5)
+W[abs(row(W) - col(W)) == 1] <- 1
+W <- W / rowSums(W)
+
+lag_z <- as.vector(W %*% z)
+m2 <- mean(z^2)
+Ii <- z * lag_z / m2
+global_I <- length(e) / sum(W) *
+  sum(z * lag_z) / sum(z^2)
+
+knitr::kable(data.frame(
+  House = names(e), Residual = unname(e),
+  Deviation = unname(z), Lag = lag_z,
+  Local_I = round(unname(Ii), 4)
+))
+cat("Mean residual:", mean(e), "\n")
+cat("Mean squared deviation:", m2, "\n")
+cat("Global Moran's I:", round(global_I, 4), "\n")
+cat("Mean local Moran's I:", round(mean(Ii), 4), "\n")
+stopifnot(isTRUE(all.equal(unname(mean(Ii)), unname(global_I))))
+```
+
+```{r}
+#| label: session-info
+
+sessionInfo()
+```
+
+## Reflection
+
+Global Moran's I tells me whether there is an overall spatial pattern to investigate; local Moran's I helps me locate it. The five-house example also makes clear why I should distinguish centered deviations from raw errors: a High-Low label does not necessarily mean the surrounding homes were overpredicted. For my own housing analysis, I would read the LISA map together with error sizes, property records, and validation results before deciding which feature to add.
+
+## Questions I Still Have
+
+- How sensitive are the same residual clusters to using five versus ten nearest neighbors?
+- Do patterns seen in training residuals persist in out-of-fold residuals and spatial validation?
+
+## References
+
+These notes reorganize and expand the [Week 8 reference notes by DOGZzl1xy](https://github.com/DOGZzl1xy/MUSA-5080-portfolio/blob/main/weekly-notes/week-08.qmd). The worked-example arithmetic is reproduced above; software details and the dated policy example are linked to their primary sources in the relevant sections.
