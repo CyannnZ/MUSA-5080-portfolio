@@ -858,7 +858,7 @@
     "href": "weekly-notes/week-08.html#questions-i-still-have",
     "title": "Week 8: Local Moran’s I and LISA",
     "section": "Questions I Still Have",
-    "text": "Questions I Still Have\n\nHow sensitive are the same residual clusters to using five versus ten nearest neighbors?\nDo patterns seen in training residuals persist in out-of-fold residuals and spatial validation?"
+    "text": "Questions I Still Have\nNone."
   },
   {
     "objectID": "weekly-notes/week-08.html#references",

@@ -271,9 +271,4 @@ Global Moran's I tells me whether there is an overall spatial pattern to investi
 
 ## Questions I Still Have
 
-- How sensitive are the same residual clusters to using five versus ten nearest neighbors?
-- Do patterns seen in training residuals persist in out-of-fold residuals and spatial validation?
-
-## References
-
-These notes reorganize and expand the [Week 8 reference notes by DOGZzl1xy](https://github.com/DOGZzl1xy/MUSA-5080-portfolio/blob/main/weekly-notes/week-08.qmd). The worked-example arithmetic is reproduced above; software details and the dated policy example are linked to their primary sources in the relevant sections.
+None.
