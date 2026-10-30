@@ -1,0 +1,11 @@
+{
+  "source_repository": "https://github.com/CyannnZ/MUSA-PPA-assignment",
+  "source_branch": "dev",
+  "source_commit": "d85d8b55097d859dbf5ee353af54958415758e99",
+  "final_model": "NS",
+  "prediction_md5": "7975c65a67695bdd0f3e1f91cbc2af1e",
+  "cv_rmse": 179512.1571931076,
+  "moran_i": 0.16415399576835984,
+  "test_rows": 5789,
+  "test_negative": 2
+}

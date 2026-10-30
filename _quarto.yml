@@ -2,6 +2,8 @@ project:
   type: website
   output-dir: docs
   execute-dir: project
+  resources:
+    - assignments/team_Mahjong_predictions.csv
 
 website:
   title: "Chenyan Zhao - MUSA 5080 Portfolio"        # <-- CHANGE THIS

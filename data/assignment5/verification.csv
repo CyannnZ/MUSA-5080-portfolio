@@ -1,0 +1,8 @@
+check,passed
+NS_model_and_annotated_formula,TRUE
+all_15_models_recomputed,TRUE
+original_grouped_folds,TRUE
+no_outcome_or_income_predictors,TRUE
+all_test_ids_and_predictions,TRUE
+source_NS_predictions_reproduced,TRUE
+income_diagnostics_recomputed,TRUE

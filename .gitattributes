@@ -1,0 +1,4 @@
+# Preserve Assignment 5 input/export bytes and the prediction-file checksum.
+data/assignment5/*.csv -text
+assignments/team_Mahjong_predictions.csv -text
+docs/assignments/team_Mahjong_predictions.csv -text
