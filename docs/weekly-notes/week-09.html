@@ -1,0 +1,1563 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.10.18">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="dcterms.date" content="2026-10-30">
+<meta name="description" content="Predicting recorded residential burglaries in Philadelphia and examining how reporting, policing, and validation shape the results.">
+
+<title>Week 9: Predictive Policing, Fishnets, Poisson Regression, and Dirty Data – Chenyan Zhao - MUSA 5080 Portfolio</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-92404dd89b1444827012a9e3a58cda88.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../index.html">
+    <span class="navbar-title">Portfolio</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../index.html"> 
+<span class="menu-text">Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../about.html"> 
+<span class="menu-text">About</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../weekly-notes/index.html"> 
+<span class="menu-text">Weekly Notes</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../assignments/index.html"> 
+<span class="menu-text">Assignments</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/CyannnZ/MUSA-5080-portfolio"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#what-we-did" id="toc-what-we-did" class="nav-link active" data-scroll-target="#what-we-did">What We Did</a></li>
+  <li><a href="#key-concepts" id="toc-key-concepts" class="nav-link" data-scroll-target="#key-concepts">Key Concepts</a></li>
+  <li><a href="#note" id="toc-note" class="nav-link" data-scroll-target="#note">Note</a>
+  <ul class="collapse">
+  <li><a href="#what-does-a-predictive-policing-model-predict" id="toc-what-does-a-predictive-policing-model-predict" class="nav-link" data-scroll-target="#what-does-a-predictive-policing-model-predict">1. What does a predictive policing model predict?</a></li>
+  <li><a href="#dirty-data-and-the-feedback-loop" id="toc-dirty-data-and-the-feedback-loop" class="nav-link" data-scroll-target="#dirty-data-and-the-feedback-loop">2. Dirty data and the feedback loop</a></li>
+  <li><a href="#philadelphia-residential-burglaries-2024-features-and-a-2025-outcome" id="toc-philadelphia-residential-burglaries-2024-features-and-a-2025-outcome" class="nav-link" data-scroll-target="#philadelphia-residential-burglaries-2024-features-and-a-2025-outcome">3. Philadelphia residential burglaries: 2024 features and a 2025 outcome</a></li>
+  <li><a href="#building-the-fishnet-and-counting-events" id="toc-building-the-fishnet-and-counting-events" class="nav-link" data-scroll-target="#building-the-fishnet-and-counting-events">4. Building the fishnet and counting events</a></li>
+  <li><a href="#why-use-a-count-model" id="toc-why-use-a-count-model" class="nav-link" data-scroll-target="#why-use-a-count-model">5. Why use a count model?</a></li>
+  <li><a href="#poisson-regression-and-overdispersion" id="toc-poisson-regression-and-overdispersion" class="nav-link" data-scroll-target="#poisson-regression-and-overdispersion">6. Poisson regression and overdispersion</a></li>
+  <li><a href="#four-spatial-features-from-2024-conditions" id="toc-four-spatial-features-from-2024-conditions" class="nav-link" data-scroll-target="#four-spatial-features-from-2024-conditions">7. Four spatial features from 2024 conditions</a></li>
+  <li><a href="#a-historical-hotspot-feature-using-lisa" id="toc-a-historical-hotspot-feature-using-lisa" class="nav-link" data-scroll-target="#a-historical-hotspot-feature-using-lisa">8. A historical hotspot feature using LISA</a></li>
+  <li><a href="#ols-and-poisson-with-the-same-predictors" id="toc-ols-and-poisson-with-the-same-predictors" class="nav-link" data-scroll-target="#ols-and-poisson-with-the-same-predictors">9. OLS and Poisson with the same predictors</a></li>
+  <li><a href="#comparing-the-model-with-a-historical-kde-baseline" id="toc-comparing-the-model-with-a-historical-kde-baseline" class="nav-link" data-scroll-target="#comparing-the-model-with-a-historical-kde-baseline">10. Comparing the model with a historical KDE baseline</a></li>
+  <li><a href="#how-reporting-and-recording-shape-the-outcome" id="toc-how-reporting-and-recording-shape-the-outcome" class="nav-link" data-scroll-target="#how-reporting-and-recording-shape-the-outcome">11. How reporting and recording shape the outcome</a></li>
+  <li><a href="#what-each-evaluation-measure-tells-us" id="toc-what-each-evaluation-measure-tells-us" class="nav-link" data-scroll-target="#what-each-evaluation-measure-tells-us">12. What each evaluation measure tells us</a></li>
+  </ul></li>
+  <li><a href="#proving-r-works" id="toc-proving-r-works" class="nav-link" data-scroll-target="#proving-r-works">Proving R Works</a></li>
+  <li><a href="#reflection" id="toc-reflection" class="nav-link" data-scroll-target="#reflection">Reflection</a></li>
+  <li><a href="#questions-i-still-have" id="toc-questions-i-still-have" class="nav-link" data-scroll-target="#questions-i-still-have">Questions I Still Have</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<div class="quarto-title-block"><div><h1 class="title">Week 9: Predictive Policing, Fishnets, Poisson Regression, and Dirty Data</h1><button type="button" class="btn code-tools-button" id="quarto-code-tools-source"><i class="bi"></i> Code</button></div></div>
+</div>
+
+<div>
+  <div class="description">
+    Predicting recorded residential burglaries in Philadelphia and examining how reporting, policing, and validation shape the results.
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">October 30, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="what-we-did" class="level2">
+<h2 class="anchored" data-anchor-id="what-we-did">What We Did</h2>
+<p>We divided Philadelphia into 500-foot grid cells and counted the residential burglaries recorded in each cell in 2025. We built predictors from 2024 burglary and 311 records, compared ordinary least squares (OLS) with Poisson regression, and checked how many recorded incidents fell in the top-ranked cells under a Poisson model and a historical density map.</p>
+</section>
+<section id="key-concepts" class="level2">
+<h2 class="anchored" data-anchor-id="key-concepts">Key Concepts</h2>
+<ul>
+<li>The outcome counts incidents that reached police records. Reporting and enforcement practices affect how well that count represents underlying crime.</li>
+<li>A fishnet gives each observation a defined area and includes places with zero recorded incidents.</li>
+<li>Poisson regression models the logarithm of the expected count. A one-unit change in a predictor multiplies the expected count by <span class="math inline">\(e^\beta\)</span>, holding other predictors fixed.</li>
+<li>Features must be available at prediction time. Evaluating a forecast also requires outcomes held out from model fitting.</li>
+<li>Prediction error, hotspot capture, measurement validity, and fairness answer different questions.</li>
+</ul>
+</section>
+<section id="note" class="level2">
+<h2 class="anchored" data-anchor-id="note">Note</h2>
+<section id="what-does-a-predictive-policing-model-predict" class="level3">
+<h3 class="anchored" data-anchor-id="what-does-a-predictive-policing-model-predict">1. What does a predictive policing model predict?</h3>
+<p>Suppose two neighborhoods experience the same number of offenses, but officers patrol A more frequently and record more incidents there. A model trained on those counts may learn where police are most active. Evaluating it against the same kind of records can reward that pattern.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Claim</th>
+<th>Question to ask</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Efficiency: send officers where they are needed</td>
+<td>How closely does the recorded count measure need?</td>
+</tr>
+<tr class="even">
+<td>Objectivity: reduce human bias</td>
+<td>Which decisions shaped the training data and the choice of features?</td>
+</tr>
+<tr class="odd">
+<td>Proactivity: anticipate future incidents</td>
+<td>Will historical patterns carry forward?</td>
+</tr>
+<tr class="even">
+<td>Data-driven deployment</td>
+<td>Who reports, who enters the record, and whose experiences go unrecorded?</td>
+</tr>
+</tbody>
+</table>
+<p>The slides group approaches into four broad families:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Approach</th>
+<th>Illustrative method</th>
+<th>Input</th>
+<th>Example from the slides</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Hotspot mapping</td>
+<td>Kernel density estimation (KDE)</td>
+<td>Past incident locations</td>
+<td>Smoothed density map</td>
+</tr>
+<tr class="even">
+<td>Risk terrain modeling</td>
+<td>Logistic regression</td>
+<td>Incident points and environmental features</td>
+<td>Risk terrain model (RTM)</td>
+</tr>
+<tr class="odd">
+<td>Machine learning</td>
+<td>Random forests or neural networks</td>
+<td>Multiple data sources</td>
+<td>PredPol and Palantir are discussed as examples of predictive policing systems</td>
+</tr>
+<tr class="even">
+<td>Person-based prediction</td>
+<td>Network analysis</td>
+<td>Social connections</td>
+<td>Strategic Subject List</td>
+</tr>
+</tbody>
+</table>
+<p>Before choosing a method, define the <strong>construct</strong> of interest. If the goal is to measure victimization, ask which victims and incidents the database actually captures.</p>
+</section>
+<section id="dirty-data-and-the-feedback-loop" class="level3">
+<h3 class="anchored" data-anchor-id="dirty-data-and-the-feedback-loop">2. Dirty data and the feedback loop</h3>
+<p>Missing values, invalid codes, and inconsistent formats are familiar cleaning problems. Richardson, Schultz, and Crawford (2019) also use <em>dirty data</em> for records shaped by biased, improper, or unlawful policing. The slides describe their study of 13 jurisdictions, including Chicago, New Orleans, and Maricopa County.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Problem</th>
+<th>Example</th>
+<th>Consequence</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Manipulated records</td>
+<td>Downgrading charges, false arrests, or discouraging victims from filing reports</td>
+<td>The recorded event can differ from what occurred.</td>
+</tr>
+<tr class="even">
+<td>Systematic bias</td>
+<td>Intensive patrols in some places and limited scrutiny of white-collar offenses</td>
+<td>Enforcement intensity changes the spatial distribution of records.</td>
+</tr>
+<tr class="odd">
+<td>Missing records</td>
+<td>A victim does not report an incident, or a complaint goes unprocessed</td>
+<td>The event is absent from the training data.</td>
+</tr>
+<tr class="even">
+<td>Proxy problems</td>
+<td>Arrests as a measure of offending, or 311 calls as a measure of need</td>
+<td>The observable indicator measures only part of the intended construct.</td>
+</tr>
+</tbody>
+</table>
+<p>A feedback loop can begin when historical counts lead a model to flag an area as high risk. More patrols can detect more events there even if underlying crime stays level. Those new records become outcomes for the next training round, reinforcing the initial allocation. Deployment itself changes what the system will observe.</p>
+</section>
+<section id="philadelphia-residential-burglaries-2024-features-and-a-2025-outcome" class="level3">
+<h3 class="anchored" data-anchor-id="philadelphia-residential-burglaries-2024-features-and-a-2025-outcome">3. Philadelphia residential burglaries: 2024 features and a 2025 outcome</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>burg_sql <span class="ot">&lt;-</span> <span class="cf">function</span>(year) {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">paste0</span>(</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"SELECT the_geom, dispatch_date, text_general_code</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="st">     FROM incidents_part1_part2</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="st">     WHERE text_general_code = 'Burglary Residential'</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="st">       AND dispatch_date &gt;= '"</span>, year, <span class="st">"-01-01'</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="st">       AND dispatch_date &lt; '"</span>, year <span class="sc">+</span> <span class="dv">1</span>, <span class="st">"-01-01'</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="st">       AND the_geom IS NOT NULL"</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>burg_2024 <span class="ot">&lt;-</span> <span class="fu">carto_get</span>(<span class="fu">burg_sql</span>(<span class="dv">2024</span>)) <span class="sc">%&gt;%</span> <span class="fu">st_transform</span>(<span class="dv">2272</span>)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>burg_2025 <span class="ot">&lt;-</span> <span class="fu">carto_get</span>(<span class="fu">burg_sql</span>(<span class="dv">2025</span>)) <span class="sc">%&gt;%</span> <span class="fu">st_transform</span>(<span class="dv">2272</span>)</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>philly <span class="ot">&lt;-</span> <span class="fu">counties</span>(<span class="st">"PA"</span>, <span class="at">cb =</span> <span class="cn">TRUE</span>, <span class="at">progress_bar =</span> <span class="cn">FALSE</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(NAME <span class="sc">==</span> <span class="st">"Philadelphia"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_transform</span>(<span class="dv">2272</span>)</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="fu">c</span>(<span class="at">burg_2024 =</span> <span class="fu">nrow</span>(burg_2024), <span class="at">burg_2025 =</span> <span class="fu">nrow</span>(burg_2025))</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co"># 2024: 3,289 records; 2025: 2,999 records</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><code>burg_sql()</code> uses <code>paste0()</code> to build the date range from January 1 of the selected year up to, but excluding, January 1 of the next year. The query keeps records with geometry. EPSG:2272 is the Pennsylvania South projected coordinate system used here, with distances in feet.</p>
+<p>Each incident is a point. To predict <strong>how many incidents occur in an area</strong>, we first need a common observation unit that can represent both events and their absence. Each 500-by-500-foot cell gets one outcome: its 2025 recorded burglary count.</p>
+</section>
+<section id="building-the-fishnet-and-counting-events" class="level3">
+<h3 class="anchored" data-anchor-id="building-the-fishnet-and-counting-events">4. Building the fishnet and counting events</h3>
+<p>Census tract boundaries serve demographic reporting, and tract sizes vary. Eight incidents in a large tract versus four in a small tract tell us little about relative risk without knowing the area, number of homes, or opportunities for burglary. Changing the scale or boundaries of aggregation can change the apparent pattern. This is the <strong>modifiable areal unit problem (MAUP)</strong>.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>fishnet <span class="ot">&lt;-</span> <span class="fu">st_make_grid</span>(philly, <span class="at">cellsize =</span> <span class="dv">500</span>, <span class="at">square =</span> <span class="cn">TRUE</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_sf</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_filter</span>(philly) <span class="sc">%&gt;%</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">cell_id =</span> <span class="fu">row_number</span>())</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>fishnet <span class="ot">&lt;-</span> fishnet <span class="sc">%&gt;%</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">burglaries =</span> <span class="fu">lengths</span>(<span class="fu">st_intersects</span>(., burg_2025)))</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="fu">nrow</span>(fishnet)  <span class="co"># 16414</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><code>st_make_grid()</code> generates squares, <code>st_sf()</code> turns them into a spatial table, and <code>st_filter()</code> keeps cells intersecting Philadelphia. <code>row_number()</code> assigns an ID. For each cell, <code>st_intersects()</code> lists matching burglary points and <code>lengths()</code> counts them. Week 7 had one row per house and a sale price in dollars. Here each of the <strong>16,414 rows</strong> represents a cell with a nonnegative integer outcome.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(fishnet) <span class="sc">+</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> burglaries), <span class="at">color =</span> <span class="cn">NA</span>) <span class="sc">+</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_viridis_c</span>(<span class="at">option =</span> <span class="st">"magma"</span>, <span class="at">direction =</span> <span class="sc">-</span><span class="dv">1</span>, <span class="at">trans =</span> <span class="st">"sqrt"</span>) <span class="sc">+</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_void</span>()</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(fishnet, <span class="fu">aes</span>(burglaries)) <span class="sc">+</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">binwidth =</span> <span class="dv">1</span>)</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="fu">mean</span>(fishnet<span class="sc">$</span>burglaries <span class="sc">==</span> <span class="dv">0</span>)  <span class="co"># 0.8740709</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The histogram has a large bar at zero and relatively few cells to its right. R treats <code>TRUE</code> as one when computing the mean, so the last line gives the fraction of cells with zero recorded burglaries: <strong>87.4%</strong>.</p>
+</section>
+<section id="why-use-a-count-model" class="level3">
+<h3 class="anchored" data-anchor-id="why-use-a-count-model">5. Why use a count model?</h3>
+<p>OLS can predict a value such as <span class="math inline">\(-0.2\)</span> burglaries. It also treats the outcome as continuous, and the usual constant-variance assumption can fit counts poorly when variability increases with the mean. A Poisson model matches the integer-valued observations with a count distribution, allows the conditional variance to vary with the mean, and gives a positive fitted mean.</p>
+<p>Taking <code>log(Y)</code> directly would be undefined for the 87.4% of cells with zero events. Adding one makes <code>log(Y + 1)</code> computable but changes the quantity being modeled and the interpretation of its coefficients.</p>
+</section>
+<section id="poisson-regression-and-overdispersion" class="level3">
+<h3 class="anchored" data-anchor-id="poisson-regression-and-overdispersion">6. Poisson regression and overdispersion</h3>
+<p>For cell <span class="math inline">\(i\)</span>, the Poisson model with a log link is</p>
+<p><span class="math display">\[
+Y_i \mid X_i \sim \operatorname{Poisson}(\lambda_i), \qquad
+\log(\lambda_i) = \beta_0 + \beta_1 X_{1i} + \cdots + \beta_k X_{ki}.
+\]</span></p>
+<p>Exponentiating the linear predictor gives <span class="math inline">\(\lambda_i = E[Y_i \mid X_i] &gt; 0\)</span>. A cell can have an expected count of <strong>0.18</strong> even though each observed count is a whole number. Holding the other features fixed, a one-unit increase in <span class="math inline">\(X_j\)</span> multiplies the expected count by <span class="math inline">\(e^{\beta_j}\)</span>. The percentage change is <span class="math inline">\(100(e^{\beta_j}-1)\)</span>. For <span class="math inline">\(\beta_j=0.20\)</span>, the multiplier is about 1.22, or a <strong>22% increase</strong>.</p>
+<p>Under the Poisson assumption, <span class="math inline">\(\operatorname{Var}(Y_i \mid X_i)=E[Y_i \mid X_i]\)</span>. A first look at the distribution gives:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">c</span>(<span class="at">mean =</span> <span class="fu">mean</span>(fishnet<span class="sc">$</span>burglaries), <span class="at">variance =</span> <span class="fu">var</span>(fishnet<span class="sc">$</span>burglaries))</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="co"># mean = 0.1827099; variance = 0.3379670</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The overall variance exceeds the overall mean. Because cells have different predictors and expected counts, this observation is a reason to check <strong>conditional dispersion after fitting</strong>. If substantial overdispersion persists, negative binomial regression is a candidate. The notes give this example specification for later consideration:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>nb_model <span class="ot">&lt;-</span> MASS<span class="sc">::</span><span class="fu">glm.nb</span>(burglaries <span class="sc">~</span> cars_cnt, <span class="at">data =</span> fishnet)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="four-spatial-features-from-2024-conditions" class="level3">
+<h3 class="anchored" data-anchor-id="four-spatial-features-from-2024-conditions">7. Four spatial features from 2024 conditions</h3>
+<p>Three 311 service categories supply the environmental records. The queries restrict requests to 2024 so that the features precede the 2025 outcome.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>get_311 <span class="ot">&lt;-</span> <span class="cf">function</span>(service) {</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">carto_get</span>(<span class="fu">paste0</span>(</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"SELECT the_geom FROM public_cases_fc</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="st">     WHERE service_name = '"</span>, service, <span class="st">"'</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="st">       AND requested_datetime &gt;= '2024-01-01'</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="st">       AND requested_datetime &lt; '2025-01-01'</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="st">       AND the_geom IS NOT NULL"</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>  )) <span class="sc">%&gt;%</span> <span class="fu">st_transform</span>(<span class="dv">2272</span>)</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>abandoned_cars <span class="ot">&lt;-</span> <span class="fu">get_311</span>(<span class="st">"Abandoned Vehicle"</span>)</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>light_outages  <span class="ot">&lt;-</span> <span class="fu">get_311</span>(<span class="st">"Street Light Outage"</span>)</span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>graffiti       <span class="ot">&lt;-</span> <span class="fu">get_311</span>(<span class="st">"Graffiti Removal"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>For distances, use the cell centroid as the query point and the event coordinates as the reference set. <code>get.knnx()</code> returns the distances to the nearest <span class="math inline">\(k\)</span> events, and <code>rowMeans()</code> averages those distances separately for each cell. City Hall is supplied in longitude and latitude, then projected into the same coordinate system.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>centroids <span class="ot">&lt;-</span> <span class="fu">st_centroid</span>(fishnet)</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>knn_dist <span class="ot">&lt;-</span> <span class="cf">function</span>(from, to, k) {</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>  nn <span class="ot">&lt;-</span> <span class="fu">get.knnx</span>(<span class="fu">st_coordinates</span>(to), <span class="fu">st_coordinates</span>(from), <span class="at">k =</span> k)</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rowMeans</span>(nn<span class="sc">$</span>nn.dist)</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>city_hall <span class="ot">&lt;-</span> <span class="fu">st_sfc</span>(<span class="fu">st_point</span>(<span class="fu">c</span>(<span class="sc">-</span><span class="fl">75.1635</span>, <span class="fl">39.9526</span>)), <span class="at">crs =</span> <span class="dv">4326</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_transform</span>(<span class="dv">2272</span>)</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>fishnet <span class="ot">&lt;-</span> fishnet <span class="sc">%&gt;%</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">cars_cnt =</span> <span class="fu">lengths</span>(<span class="fu">st_intersects</span>(., abandoned_cars)),</span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>    <span class="at">light_nn1 =</span> <span class="fu">knn_dist</span>(centroids, light_outages, <span class="at">k =</span> <span class="dv">1</span>),</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">graffiti_nn3 =</span> <span class="fu">knn_dist</span>(centroids, graffiti, <span class="at">k =</span> <span class="dv">3</span>),</span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">cityhall_mi =</span> <span class="fu">as.numeric</span>(<span class="fu">st_distance</span>(centroids, city_hall)) <span class="sc">/</span> <span class="dv">5280</span>,</span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">log_light_nn1 =</span> <span class="fu">log</span>(light_nn1),</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">log_graffiti_nn3 =</span> <span class="fu">log</span>(graffiti_nn3)</span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Feature</th>
+<th>Measurement</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>cars_cnt</code></td>
+<td>Number of abandoned-vehicle requests inside the cell</td>
+</tr>
+<tr class="even">
+<td><code>light_nn1</code></td>
+<td>Distance from the centroid to the nearest reported street light outage</td>
+</tr>
+<tr class="odd">
+<td><code>graffiti_nn3</code></td>
+<td>Mean distance to the three nearest graffiti-removal requests</td>
+</tr>
+<tr class="even">
+<td><code>cityhall_mi</code></td>
+<td>Distance to a fixed point, City Hall, converted from feet to miles by dividing by 5,280</td>
+</tr>
+</tbody>
+</table>
+<p>Check for zero and missing distances before taking logarithms of the two distance predictors. The outcome remains a count. The environmental features measure <strong>requests submitted to 311</strong>. Differences in willingness or ability to report a problem can affect their geographic distribution.</p>
+</section>
+<section id="a-historical-hotspot-feature-using-lisa" class="level3">
+<h3 class="anchored" data-anchor-id="a-historical-hotspot-feature-using-lisa">8. A historical hotspot feature using LISA</h3>
+<p>First count the <strong>2024</strong> burglaries in each cell. Local indicators of spatial association (LISA) identify places where a high historical count is surrounded by high counts in neighboring cells.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>fishnet <span class="ot">&lt;-</span> fishnet <span class="sc">%&gt;%</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">burg_2024 =</span> <span class="fu">lengths</span>(<span class="fu">st_intersects</span>(., burg_2024)))</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>nb <span class="ot">&lt;-</span> <span class="fu">knn2nb</span>(<span class="fu">knearneigh</span>(<span class="fu">st_coordinates</span>(centroids), <span class="at">k =</span> <span class="dv">8</span>))</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>lw <span class="ot">&lt;-</span> <span class="fu">nb2listw</span>(nb, <span class="at">style =</span> <span class="st">"W"</span>)</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">5080</span>)</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>lisa <span class="ot">&lt;-</span> <span class="fu">localmoran_perm</span>(fishnet<span class="sc">$</span>burg_2024, lw, <span class="at">nsim =</span> <span class="dv">999</span>)</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>fishnet <span class="ot">&lt;-</span> fishnet <span class="sc">%&gt;%</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">quadrant =</span> <span class="fu">attr</span>(lisa, <span class="st">"quadr"</span>)<span class="sc">$</span>mean,</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">p_value =</span> lisa[, <span class="st">"Pr(folded) Sim"</span>],</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>    <span class="at">hotspot =</span> quadrant <span class="sc">==</span> <span class="st">"High-High"</span> <span class="sc">&amp;</span> p_value <span class="sc">&lt;</span> <span class="fl">0.05</span></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(fishnet<span class="sc">$</span>hotspot)</span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a><span class="co"># FALSE: 15,639; TRUE: 775</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>On a regular interior grid, eight nearest neighbors approximate the four edge-sharing and four corner-sharing neighbors. The kNN rule can give different neighbors from strict queen contiguity at the boundary. <code>style = "W"</code> row-standardizes the weights. The local Moran test uses 999 permutations. A cell qualifies as a hotspot when it falls in the High-High quadrant and its permutation <span class="math inline">\(p\)</span>-value is below 0.05. This rule identified <strong>775 cells</strong>. Applying an unadjusted threshold across thousands of local tests can flag some cells by chance.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>hot_pts <span class="ot">&lt;-</span> centroids[fishnet<span class="sc">$</span>hotspot, ]</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>fishnet <span class="ot">&lt;-</span> fishnet <span class="sc">%&gt;%</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">hotspot_dist_mi =</span> <span class="fu">knn_dist</span>(centroids, hot_pts, <span class="at">k =</span> <span class="dv">1</span>) <span class="sc">/</span> <span class="dv">5280</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>A cell 0.4 miles from the nearest historical hotspot and one 2.0 miles away now receive different values of a continuous predictor. Ask whether this distance could have been known at prediction time. Using 2025 burglaries to locate hotspots and then predict the same year’s burglaries would leak the target. Using 2024 records makes the feature historically available. A separate holdout is still needed to evaluate the fitted model.</p>
+</section>
+<section id="ols-and-poisson-with-the-same-predictors" class="level3">
+<h3 class="anchored" data-anchor-id="ols-and-poisson-with-the-same-predictors">9. OLS and Poisson with the same predictors</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>f <span class="ot">&lt;-</span> burglaries <span class="sc">~</span> cars_cnt <span class="sc">+</span> log_light_nn1 <span class="sc">+</span> log_graffiti_nn3 <span class="sc">+</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  cityhall_mi <span class="sc">+</span> hotspot_dist_mi</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>ols  <span class="ot">&lt;-</span> <span class="fu">lm</span>(f, <span class="at">data =</span> fishnet)</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>pois <span class="ot">&lt;-</span> <span class="fu">glm</span>(f, <span class="at">family =</span> <span class="st">"poisson"</span>, <span class="at">data =</span> fishnet)</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>fishnet <span class="ot">&lt;-</span> fishnet <span class="sc">%&gt;%</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">pred_ols =</span> <span class="fu">predict</span>(ols),</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">pred_pois =</span> <span class="fu">predict</span>(pois, <span class="at">type =</span> <span class="st">"response"</span>)</span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a><span class="fu">c</span>(</span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>  <span class="at">negative_ols =</span> <span class="fu">sum</span>(fishnet<span class="sc">$</span>pred_ols <span class="sc">&lt;</span> <span class="dv">0</span>),</span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>  <span class="at">negative_pois =</span> <span class="fu">sum</span>(fishnet<span class="sc">$</span>pred_pois <span class="sc">&lt;</span> <span class="dv">0</span>)</span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a><span class="co"># negative_ols = 3277; negative_pois = 0</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>OLS produced negative predicted counts for <strong>3,277 cells</strong>. The Poisson model produced positive fitted means throughout. For a Poisson GLM, <code>predict()</code> defaults to the link scale, <span class="math inline">\(\log\lambda\)</span>. Use <code>type = "response"</code> to obtain expected counts before comparing predictions with observations or computing RMSE.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 21%">
+<col style="width: 28%">
+<col style="width: 28%">
+<col style="width: 21%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Predictor</th>
+<th style="text-align: right;">Coefficient</th>
+<th style="text-align: right;">Approximate multiplier</th>
+<th>Interpretation, holding other predictors fixed</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Intercept</td>
+<td style="text-align: right;">1.920</td>
+<td style="text-align: right;">6.81</td>
+<td>Expected count with all model predictors at zero, which may describe an unusual cell</td>
+</tr>
+<tr class="even">
+<td><code>cars_cnt</code></td>
+<td style="text-align: right;">0.026</td>
+<td style="text-align: right;">1.03</td>
+<td>One additional abandoned-vehicle request corresponds to about 3% more expected burglaries.</td>
+</tr>
+<tr class="odd">
+<td><code>log_light_nn1</code></td>
+<td style="text-align: right;">-0.341</td>
+<td style="text-align: right;">0.711</td>
+<td>A one-unit increase in log distance multiplies the expected count by 0.711.</td>
+</tr>
+<tr class="even">
+<td><code>log_graffiti_nn3</code></td>
+<td style="text-align: right;">-0.113</td>
+<td style="text-align: right;">0.893</td>
+<td>A one-unit increase in log distance multiplies the expected count by 0.893.</td>
+</tr>
+<tr class="odd">
+<td><code>cityhall_mi</code></td>
+<td style="text-align: right;">-0.017</td>
+<td style="text-align: right;">0.983</td>
+<td>One additional mile from City Hall corresponds to about a 1.7% decrease.</td>
+</tr>
+<tr class="even">
+<td><code>hotspot_dist_mi</code></td>
+<td style="text-align: right;">-1.450</td>
+<td style="text-align: right;">0.234</td>
+<td>One additional mile from a historical hotspot corresponds to about a 76.6% decrease.</td>
+</tr>
+</tbody>
+</table>
+<p>For <code>log_light_nn1</code>, one unit on the log scale means multiplying the original distance by <span class="math inline">\(e \approx 2.718\)</span>. A 1% increase in the original distance corresponds to approximately a <strong>0.341% decrease</strong> in expected recorded burglaries. These associations alone cannot establish that abandoned cars, lighting conditions, or graffiti cause burglaries.</p>
+</section>
+<section id="comparing-the-model-with-a-historical-kde-baseline" class="level3">
+<h3 class="anchored" data-anchor-id="comparing-the-model-with-a-historical-kde-baseline">10. Comparing the model with a historical KDE baseline</h3>
+<p>Kernel density estimation smooths historical event locations into a continuous density surface. The example uses the bounding box of the fishnet as the observation window, a <strong>1,000-foot bandwidth</strong>, and 2024 burglaries within Philadelphia. It reads the smoothed density at each cell centroid.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>bb <span class="ot">&lt;-</span> <span class="fu">st_bbox</span>(fishnet)</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>win <span class="ot">&lt;-</span> <span class="fu">owin</span>(</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">xrange =</span> <span class="fu">c</span>(bb[<span class="st">"xmin"</span>], bb[<span class="st">"xmax"</span>]),</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">yrange =</span> <span class="fu">c</span>(bb[<span class="st">"ymin"</span>], bb[<span class="st">"ymax"</span>])</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>xy_2024 <span class="ot">&lt;-</span> <span class="fu">st_coordinates</span>(<span class="fu">st_filter</span>(burg_2024, philly))</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>kde_2024 <span class="ot">&lt;-</span> <span class="fu">density</span>(</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ppp</span>(xy_2024[, <span class="dv">1</span>], xy_2024[, <span class="dv">2</span>], <span class="at">window =</span> win),</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">sigma =</span> <span class="dv">1000</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>xy_cent <span class="ot">&lt;-</span> <span class="fu">st_coordinates</span>(centroids)</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>fishnet<span class="sc">$</span>kde_2024 <span class="ot">&lt;-</span> <span class="fu">safelookup</span>(</span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>  kde_2024,</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ppp</span>(xy_cent[, <span class="dv">1</span>], xy_cent[, <span class="dv">2</span>], <span class="at">window =</span> win)</span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Rank cells separately by their Poisson fitted means and their historical KDE densities. For each ranking, select cells at or above the 90th percentile. <strong>Capture</strong> is the fraction of all recorded 2025 burglaries falling in those selected cells.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>fishnet <span class="sc">%&gt;%</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_drop_geometry</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">model_top =</span> pred_pois <span class="sc">&gt;=</span> <span class="fu">quantile</span>(pred_pois, <span class="fl">0.9</span>),</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">kde_top =</span> kde_2024 <span class="sc">&gt;=</span> <span class="fu">quantile</span>(kde_2024, <span class="fl">0.9</span>)</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">model =</span> <span class="fu">sum</span>(burglaries[model_top]) <span class="sc">/</span> <span class="fu">sum</span>(burglaries),</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">kde   =</span> <span class="fu">sum</span>(burglaries[kde_top]) <span class="sc">/</span> <span class="fu">sum</span>(burglaries)</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a><span class="co"># model = 0.3967989; kde = 0.4598199</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The Poisson selection captured <strong>39.7%</strong> of recorded burglaries, and the historical KDE selection captured <strong>46.0%</strong>. The Poisson coefficients were estimated using the very 2025 outcomes used to score the model. KDE used only 2024 incidents. The comparison illustrates how a simple baseline can rank cells well, but its design cannot establish either method’s advantage on future data. A fair forecast comparison would fit both methods using information available before a common held-out period and then score both on that period. A geographic holdout instead tests transfer to unseen areas.</p>
+</section>
+<section id="how-reporting-and-recording-shape-the-outcome" class="level3">
+<h3 class="anchored" data-anchor-id="how-reporting-and-recording-shape-the-outcome">11. How reporting and recording shape the outcome</h3>
+<p>An event must occur, come to someone’s attention, and enter the police record. For the reporting pathway illustrated in the notes, a simplified relationship is</p>
+<p><span class="math display">\[
+E[\text{recorded count}] \approx
+\text{actual count} \times P(\text{reported}\mid\text{event})
+\times P(\text{recorded}\mid\text{reported event}).
+\]</span></p>
+<p>This expression illustrates the measurement process. Reporting and recording probabilities can vary across incidents and neighborhoods. The slides cite approximate 2024 National Crime Victimization Survey reporting shares of <strong>75% for motor vehicle theft</strong>, <strong>41% for burglary or trespassing</strong>, and <strong>25% for other theft</strong>.</p>
+<p>Suppose each of two areas experiences 100 incidents. If their joint reporting and recording probabilities are 0.8 and 0.3, their expected recorded counts are <strong>80 and 30</strong>. A model can accurately predict that gap even though both areas experienced the same number of incidents.</p>
+<p>Ordinary cross-validation splits the same database into training and test folds. Both can share the same reporting and enforcement patterns. A low test error can therefore reflect good prediction of the recording process. Compared with the observed transaction price in a house-sale model, a recorded crime count depends on additional decisions about reporting, enforcement, and classification. Assessing the validity of the label and the fairness of deployment requires evidence beyond cross-validation.</p>
+<p>The chosen predictors also carry a theory. Abandoned vehicles, broken street lights, and graffiti reflect a <em>broken windows</em> hypothesis linking visible disorder with crime risk. Willingness to report, access to 311, and government response all shape the requests we observe. For <span class="math inline">\(Y\)</span>, ask how much of a geographic difference comes from the probability of recording an event. For <span class="math inline">\(X\)</span>, ask how well reported disorder measures the physical conditions residents experience.</p>
+</section>
+<section id="what-each-evaluation-measure-tells-us" class="level3">
+<h3 class="anchored" data-anchor-id="what-each-evaluation-measure-tells-us">12. What each evaluation measure tells us</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Measure</th>
+<th>Question it answers</th>
+<th>Limit of the interpretation</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>MAE or RMSE</td>
+<td>How far are predicted counts from recorded counts?</td>
+<td>Accuracy against records leaves underlying victimization unmeasured.</td>
+</tr>
+<tr class="even">
+<td>Poisson <span class="math inline">\(e^\beta\)</span></td>
+<td>By what factor does the expected count change for a one-unit increase in a predictor?</td>
+<td>A conditional association alone cannot identify a causal effect.</td>
+</tr>
+<tr class="odd">
+<td>LISA</td>
+<td>Where do high-count cells form local High-High clusters?</td>
+<td>The cluster designation leaves its cause open.</td>
+</tr>
+<tr class="even">
+<td>Top 10% capture</td>
+<td>What share of recorded incidents falls in the highest-ranked cells?</td>
+<td>Fairness and the effect of intervention need separate evaluation.</td>
+</tr>
+<tr class="odd">
+<td>Geographic CV (leave-one-group-out)</td>
+<td>How well does a model transfer to a whole police district held out from training?</td>
+<td>Geographic separation can preserve biases already present in the labels.</td>
+</tr>
+<tr class="even">
+<td>Time holdout</td>
+<td>How well do past data predict records in a later period?</td>
+<td>Unreported incidents remain absent from the evaluation.</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="proving-r-works" class="level2">
+<h2 class="anchored" data-anchor-id="proving-r-works">Proving R Works</h2>
+<p><sub></sub>~{r} #| label: poisson-coefficient-example # Expected percentage change for a one-mile increase in hotspot distance round(100 * (exp(-1.450) - 1), 1) <sub></sub>~</p>
+<p><sub></sub>~{r} #| label: session-info sessionInfo() <sub></sub>~</p>
+</section>
+<section id="reflection" class="level2">
+<h2 class="anchored" data-anchor-id="reflection">Reflection</h2>
+<p>The two-neighborhood example changed how I read a hotspot map. A model could predict 80 records in one area and 30 in another even if both experienced 100 incidents. Before using the map to allocate resources, I would want to know how reporting and patrol practices differ across those areas. For the forecasting question, I would also compare the Poisson model and historical KDE on the same future period.</p>
+</section>
+<section id="questions-i-still-have" class="level2">
+<h2 class="anchored" data-anchor-id="questions-i-still-have">Questions I Still Have</h2>
+<p>None</p>
+
+
+<!-- -->
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+    const viewSource = window.document.getElementById('quarto-view-source') ||
+                       window.document.getElementById('quarto-code-tools-source');
+    if (viewSource) {
+      const sourceUrl = viewSource.getAttribute("data-quarto-source-url");
+      viewSource.addEventListener("click", function(e) {
+        if (sourceUrl) {
+          // rstudio viewer pane
+          if (/\bcapabilities=\b/.test(window.location)) {
+            window.open(sourceUrl);
+          } else {
+            window.location.href = sourceUrl;
+          }
+        } else {
+          const modal = new bootstrap.Modal(document.getElementById('quarto-embedded-source-code-modal'));
+          modal.show();
+        }
+        return false;
+      });
+    }
+    function toggleCodeHandler(show) {
+      return function(e) {
+        const cellDetails = window.document.querySelectorAll(".cell details.code-fold");
+        for (let i=0; i<cellDetails.length; i++) {
+          const details = cellDetails[i];
+          if (show) {
+            details.open = true;
+          } else {
+            details.removeAttribute("open");
+          }
+        }
+        const cellCodeDivs = window.document.querySelectorAll(".cell div.sourceCode.cell-code");
+        const fromCls = show ? "hidden" : "unhidden";
+        const toCls = show ? "unhidden" : "hidden";
+        for (let i=0; i<cellCodeDivs.length; i++) {
+          const codeDiv = cellCodeDivs[i];
+          if (codeDiv.classList.contains(fromCls)) {
+            codeDiv.classList.remove(fromCls);
+            codeDiv.classList.add(toCls);
+          } 
+        }
+        return false;
+      }
+    }
+    const hideAllCode = window.document.getElementById("quarto-hide-all-code");
+    if (hideAllCode) {
+      hideAllCode.addEventListener("click", toggleCodeHandler(false));
+    }
+    const showAllCode = window.document.getElementById("quarto-show-all-code");
+    if (showAllCode) {
+      showAllCode.addEventListener("click", toggleCodeHandler(true));
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script><div class="modal fade" id="quarto-embedded-source-code-modal" tabindex="-1" aria-labelledby="quarto-embedded-source-code-modal-label" aria-hidden="true"><div class="modal-dialog modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="quarto-embedded-source-code-modal-label">Source Code</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13" data-shortcodes="false"><pre class="sourceCode markdown code-with-copy"><code class="sourceCode markdown"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="an">title:</span><span class="co"> "Week 9: Predictive Policing, Fishnets, Poisson Regression, and Dirty Data"</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="an">description:</span><span class="co"> "Predicting recorded residential burglaries in Philadelphia and examining how reporting, policing, and validation shape the results."</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a><span class="an">date:</span><span class="co"> 2026-10-30</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a><span class="fu">## What We Did</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>We divided Philadelphia into 500-foot grid cells and counted the residential burglaries recorded in each cell in 2025. We built predictors from 2024 burglary and 311 records, compared ordinary least squares (OLS) with Poisson regression, and checked how many recorded incidents fell in the top-ranked cells under a Poisson model and a historical density map.</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a><span class="fu">## Key Concepts</span></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>The outcome counts incidents that reached police records. Reporting and enforcement practices affect how well that count represents underlying crime.</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>A fishnet gives each observation a defined area and includes places with zero recorded incidents.</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Poisson regression models the logarithm of the expected count. A one-unit change in a predictor multiplies the expected count by $e^\beta$, holding other predictors fixed.</span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Features must be available at prediction time. Evaluating a forecast also requires outcomes held out from model fitting.</span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Prediction error, hotspot capture, measurement validity, and fairness answer different questions.</span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a><span class="fu">## Note</span></span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-21"><a href="#cb13-21" aria-hidden="true" tabindex="-1"></a><span class="fu">### 1. What does a predictive policing model predict?</span></span>
+<span id="cb13-22"><a href="#cb13-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-23"><a href="#cb13-23" aria-hidden="true" tabindex="-1"></a>Suppose two neighborhoods experience the same number of offenses, but officers patrol A more frequently and record more incidents there. A model trained on those counts may learn where police are most active. Evaluating it against the same kind of records can reward that pattern.</span>
+<span id="cb13-24"><a href="#cb13-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-25"><a href="#cb13-25" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Claim <span class="pp">|</span> Question to ask <span class="pp">|</span></span>
+<span id="cb13-26"><a href="#cb13-26" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|</span></span>
+<span id="cb13-27"><a href="#cb13-27" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Efficiency: send officers where they are needed <span class="pp">|</span> How closely does the recorded count measure need? <span class="pp">|</span></span>
+<span id="cb13-28"><a href="#cb13-28" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Objectivity: reduce human bias <span class="pp">|</span> Which decisions shaped the training data and the choice of features? <span class="pp">|</span></span>
+<span id="cb13-29"><a href="#cb13-29" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Proactivity: anticipate future incidents <span class="pp">|</span> Will historical patterns carry forward? <span class="pp">|</span></span>
+<span id="cb13-30"><a href="#cb13-30" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Data-driven deployment <span class="pp">|</span> Who reports, who enters the record, and whose experiences go unrecorded? <span class="pp">|</span></span>
+<span id="cb13-31"><a href="#cb13-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-32"><a href="#cb13-32" aria-hidden="true" tabindex="-1"></a>The slides group approaches into four broad families:</span>
+<span id="cb13-33"><a href="#cb13-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-34"><a href="#cb13-34" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Approach <span class="pp">|</span> Illustrative method <span class="pp">|</span> Input <span class="pp">|</span> Example from the slides <span class="pp">|</span></span>
+<span id="cb13-35"><a href="#cb13-35" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|---|---|</span></span>
+<span id="cb13-36"><a href="#cb13-36" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Hotspot mapping <span class="pp">|</span> Kernel density estimation (KDE) <span class="pp">|</span> Past incident locations <span class="pp">|</span> Smoothed density map <span class="pp">|</span></span>
+<span id="cb13-37"><a href="#cb13-37" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Risk terrain modeling <span class="pp">|</span> Logistic regression <span class="pp">|</span> Incident points and environmental features <span class="pp">|</span> Risk terrain model (RTM) <span class="pp">|</span></span>
+<span id="cb13-38"><a href="#cb13-38" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Machine learning <span class="pp">|</span> Random forests or neural networks <span class="pp">|</span> Multiple data sources <span class="pp">|</span> PredPol and Palantir are discussed as examples of predictive policing systems <span class="pp">|</span></span>
+<span id="cb13-39"><a href="#cb13-39" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Person-based prediction <span class="pp">|</span> Network analysis <span class="pp">|</span> Social connections <span class="pp">|</span> Strategic Subject List <span class="pp">|</span></span>
+<span id="cb13-40"><a href="#cb13-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-41"><a href="#cb13-41" aria-hidden="true" tabindex="-1"></a>Before choosing a method, define the **construct** of interest. If the goal is to measure victimization, ask which victims and incidents the database actually captures.</span>
+<span id="cb13-42"><a href="#cb13-42" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-43"><a href="#cb13-43" aria-hidden="true" tabindex="-1"></a><span class="fu">### 2. Dirty data and the feedback loop</span></span>
+<span id="cb13-44"><a href="#cb13-44" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-45"><a href="#cb13-45" aria-hidden="true" tabindex="-1"></a>Missing values, invalid codes, and inconsistent formats are familiar cleaning problems. Richardson, Schultz, and Crawford (2019) also use *dirty data* for records shaped by biased, improper, or unlawful policing. The slides describe their study of 13 jurisdictions, including Chicago, New Orleans, and Maricopa County.</span>
+<span id="cb13-46"><a href="#cb13-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-47"><a href="#cb13-47" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Problem <span class="pp">|</span> Example <span class="pp">|</span> Consequence <span class="pp">|</span></span>
+<span id="cb13-48"><a href="#cb13-48" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|---|</span></span>
+<span id="cb13-49"><a href="#cb13-49" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Manipulated records <span class="pp">|</span> Downgrading charges, false arrests, or discouraging victims from filing reports <span class="pp">|</span> The recorded event can differ from what occurred. <span class="pp">|</span></span>
+<span id="cb13-50"><a href="#cb13-50" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Systematic bias <span class="pp">|</span> Intensive patrols in some places and limited scrutiny of white-collar offenses <span class="pp">|</span> Enforcement intensity changes the spatial distribution of records. <span class="pp">|</span></span>
+<span id="cb13-51"><a href="#cb13-51" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Missing records <span class="pp">|</span> A victim does not report an incident, or a complaint goes unprocessed <span class="pp">|</span> The event is absent from the training data. <span class="pp">|</span></span>
+<span id="cb13-52"><a href="#cb13-52" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Proxy problems <span class="pp">|</span> Arrests as a measure of offending, or 311 calls as a measure of need <span class="pp">|</span> The observable indicator measures only part of the intended construct. <span class="pp">|</span></span>
+<span id="cb13-53"><a href="#cb13-53" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-54"><a href="#cb13-54" aria-hidden="true" tabindex="-1"></a>A feedback loop can begin when historical counts lead a model to flag an area as high risk. More patrols can detect more events there even if underlying crime stays level. Those new records become outcomes for the next training round, reinforcing the initial allocation. Deployment itself changes what the system will observe.</span>
+<span id="cb13-55"><a href="#cb13-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-56"><a href="#cb13-56" aria-hidden="true" tabindex="-1"></a><span class="fu">### 3. Philadelphia residential burglaries: 2024 features and a 2025 outcome</span></span>
+<span id="cb13-57"><a href="#cb13-57" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-58"><a href="#cb13-58" aria-hidden="true" tabindex="-1"></a><span class="in">~~~r</span></span>
+<span id="cb13-59"><a href="#cb13-59" aria-hidden="true" tabindex="-1"></a>burg_sql <span class="ot">&lt;-</span> <span class="cf">function</span>(year) {</span>
+<span id="cb13-60"><a href="#cb13-60" aria-hidden="true" tabindex="-1"></a>  <span class="fu">paste0</span>(</span>
+<span id="cb13-61"><a href="#cb13-61" aria-hidden="true" tabindex="-1"></a>    <span class="st">"SELECT the_geom, dispatch_date, text_general_code</span></span>
+<span id="cb13-62"><a href="#cb13-62" aria-hidden="true" tabindex="-1"></a><span class="st">     FROM incidents_part1_part2</span></span>
+<span id="cb13-63"><a href="#cb13-63" aria-hidden="true" tabindex="-1"></a><span class="st">     WHERE text_general_code = 'Burglary Residential'</span></span>
+<span id="cb13-64"><a href="#cb13-64" aria-hidden="true" tabindex="-1"></a><span class="st">       AND dispatch_date &gt;= '"</span>, year, <span class="st">"-01-01'</span></span>
+<span id="cb13-65"><a href="#cb13-65" aria-hidden="true" tabindex="-1"></a><span class="st">       AND dispatch_date &lt; '"</span>, year <span class="sc">+</span> <span class="dv">1</span>, <span class="st">"-01-01'</span></span>
+<span id="cb13-66"><a href="#cb13-66" aria-hidden="true" tabindex="-1"></a><span class="st">       AND the_geom IS NOT NULL"</span></span>
+<span id="cb13-67"><a href="#cb13-67" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb13-68"><a href="#cb13-68" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb13-69"><a href="#cb13-69" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-70"><a href="#cb13-70" aria-hidden="true" tabindex="-1"></a>burg_2024 <span class="ot">&lt;-</span> <span class="fu">carto_get</span>(<span class="fu">burg_sql</span>(<span class="dv">2024</span>)) <span class="sc">%&gt;%</span> <span class="fu">st_transform</span>(<span class="dv">2272</span>)</span>
+<span id="cb13-71"><a href="#cb13-71" aria-hidden="true" tabindex="-1"></a>burg_2025 <span class="ot">&lt;-</span> <span class="fu">carto_get</span>(<span class="fu">burg_sql</span>(<span class="dv">2025</span>)) <span class="sc">%&gt;%</span> <span class="fu">st_transform</span>(<span class="dv">2272</span>)</span>
+<span id="cb13-72"><a href="#cb13-72" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-73"><a href="#cb13-73" aria-hidden="true" tabindex="-1"></a>philly <span class="ot">&lt;-</span> <span class="fu">counties</span>(<span class="st">"PA"</span>, <span class="at">cb =</span> <span class="cn">TRUE</span>, <span class="at">progress_bar =</span> <span class="cn">FALSE</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb13-74"><a href="#cb13-74" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(NAME <span class="sc">==</span> <span class="st">"Philadelphia"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb13-75"><a href="#cb13-75" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_transform</span>(<span class="dv">2272</span>)</span>
+<span id="cb13-76"><a href="#cb13-76" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-77"><a href="#cb13-77" aria-hidden="true" tabindex="-1"></a><span class="fu">c</span>(<span class="at">burg_2024 =</span> <span class="fu">nrow</span>(burg_2024), <span class="at">burg_2025 =</span> <span class="fu">nrow</span>(burg_2025))</span>
+<span id="cb13-78"><a href="#cb13-78" aria-hidden="true" tabindex="-1"></a><span class="co"># 2024: 3,289 records; 2025: 2,999 records</span></span>
+<span id="cb13-79"><a href="#cb13-79" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb13-80"><a href="#cb13-80" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-81"><a href="#cb13-81" aria-hidden="true" tabindex="-1"></a><span class="in">`burg_sql()`</span> uses <span class="in">`paste0()`</span> to build the date range from January 1 of the selected year up to, but excluding, January 1 of the next year. The query keeps records with geometry. EPSG:2272 is the Pennsylvania South projected coordinate system used here, with distances in feet.</span>
+<span id="cb13-82"><a href="#cb13-82" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-83"><a href="#cb13-83" aria-hidden="true" tabindex="-1"></a>Each incident is a point. To predict **how many incidents occur in an area**, we first need a common observation unit that can represent both events and their absence. Each 500-by-500-foot cell gets one outcome: its 2025 recorded burglary count.</span>
+<span id="cb13-84"><a href="#cb13-84" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-85"><a href="#cb13-85" aria-hidden="true" tabindex="-1"></a><span class="fu">### 4. Building the fishnet and counting events</span></span>
+<span id="cb13-86"><a href="#cb13-86" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-87"><a href="#cb13-87" aria-hidden="true" tabindex="-1"></a>Census tract boundaries serve demographic reporting, and tract sizes vary. Eight incidents in a large tract versus four in a small tract tell us little about relative risk without knowing the area, number of homes, or opportunities for burglary. Changing the scale or boundaries of aggregation can change the apparent pattern. This is the **modifiable areal unit problem (MAUP)**.</span>
+<span id="cb13-88"><a href="#cb13-88" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-89"><a href="#cb13-89" aria-hidden="true" tabindex="-1"></a><span class="in">~~~r</span></span>
+<span id="cb13-90"><a href="#cb13-90" aria-hidden="true" tabindex="-1"></a>fishnet <span class="ot">&lt;-</span> <span class="fu">st_make_grid</span>(philly, <span class="at">cellsize =</span> <span class="dv">500</span>, <span class="at">square =</span> <span class="cn">TRUE</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb13-91"><a href="#cb13-91" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_sf</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb13-92"><a href="#cb13-92" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_filter</span>(philly) <span class="sc">%&gt;%</span></span>
+<span id="cb13-93"><a href="#cb13-93" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">cell_id =</span> <span class="fu">row_number</span>())</span>
+<span id="cb13-94"><a href="#cb13-94" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-95"><a href="#cb13-95" aria-hidden="true" tabindex="-1"></a>fishnet <span class="ot">&lt;-</span> fishnet <span class="sc">%&gt;%</span></span>
+<span id="cb13-96"><a href="#cb13-96" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">burglaries =</span> <span class="fu">lengths</span>(<span class="fu">st_intersects</span>(., burg_2025)))</span>
+<span id="cb13-97"><a href="#cb13-97" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-98"><a href="#cb13-98" aria-hidden="true" tabindex="-1"></a><span class="fu">nrow</span>(fishnet)  <span class="co"># 16414</span></span>
+<span id="cb13-99"><a href="#cb13-99" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb13-100"><a href="#cb13-100" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-101"><a href="#cb13-101" aria-hidden="true" tabindex="-1"></a><span class="in">`st_make_grid()`</span> generates squares, <span class="in">`st_sf()`</span> turns them into a spatial table, and <span class="in">`st_filter()`</span> keeps cells intersecting Philadelphia. <span class="in">`row_number()`</span> assigns an ID. For each cell, <span class="in">`st_intersects()`</span> lists matching burglary points and <span class="in">`lengths()`</span> counts them. Week 7 had one row per house and a sale price in dollars. Here each of the **16,414 rows** represents a cell with a nonnegative integer outcome.</span>
+<span id="cb13-102"><a href="#cb13-102" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-103"><a href="#cb13-103" aria-hidden="true" tabindex="-1"></a><span class="in">~~~r</span></span>
+<span id="cb13-104"><a href="#cb13-104" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(fishnet) <span class="sc">+</span></span>
+<span id="cb13-105"><a href="#cb13-105" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> burglaries), <span class="at">color =</span> <span class="cn">NA</span>) <span class="sc">+</span></span>
+<span id="cb13-106"><a href="#cb13-106" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_viridis_c</span>(<span class="at">option =</span> <span class="st">"magma"</span>, <span class="at">direction =</span> <span class="sc">-</span><span class="dv">1</span>, <span class="at">trans =</span> <span class="st">"sqrt"</span>) <span class="sc">+</span></span>
+<span id="cb13-107"><a href="#cb13-107" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_void</span>()</span>
+<span id="cb13-108"><a href="#cb13-108" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-109"><a href="#cb13-109" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(fishnet, <span class="fu">aes</span>(burglaries)) <span class="sc">+</span></span>
+<span id="cb13-110"><a href="#cb13-110" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">binwidth =</span> <span class="dv">1</span>)</span>
+<span id="cb13-111"><a href="#cb13-111" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-112"><a href="#cb13-112" aria-hidden="true" tabindex="-1"></a><span class="fu">mean</span>(fishnet<span class="sc">$</span>burglaries <span class="sc">==</span> <span class="dv">0</span>)  <span class="co"># 0.8740709</span></span>
+<span id="cb13-113"><a href="#cb13-113" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb13-114"><a href="#cb13-114" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-115"><a href="#cb13-115" aria-hidden="true" tabindex="-1"></a>The histogram has a large bar at zero and relatively few cells to its right. R treats <span class="in">`TRUE`</span> as one when computing the mean, so the last line gives the fraction of cells with zero recorded burglaries: **87.4%**.</span>
+<span id="cb13-116"><a href="#cb13-116" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-117"><a href="#cb13-117" aria-hidden="true" tabindex="-1"></a><span class="fu">### 5. Why use a count model?</span></span>
+<span id="cb13-118"><a href="#cb13-118" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-119"><a href="#cb13-119" aria-hidden="true" tabindex="-1"></a>OLS can predict a value such as $-0.2$ burglaries. It also treats the outcome as continuous, and the usual constant-variance assumption can fit counts poorly when variability increases with the mean. A Poisson model matches the integer-valued observations with a count distribution, allows the conditional variance to vary with the mean, and gives a positive fitted mean.</span>
+<span id="cb13-120"><a href="#cb13-120" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-121"><a href="#cb13-121" aria-hidden="true" tabindex="-1"></a>Taking <span class="in">`log(Y)`</span> directly would be undefined for the 87.4% of cells with zero events. Adding one makes <span class="in">`log(Y + 1)`</span> computable but changes the quantity being modeled and the interpretation of its coefficients.</span>
+<span id="cb13-122"><a href="#cb13-122" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-123"><a href="#cb13-123" aria-hidden="true" tabindex="-1"></a><span class="fu">### 6. Poisson regression and overdispersion</span></span>
+<span id="cb13-124"><a href="#cb13-124" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-125"><a href="#cb13-125" aria-hidden="true" tabindex="-1"></a>For cell $i$, the Poisson model with a log link is</span>
+<span id="cb13-126"><a href="#cb13-126" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-127"><a href="#cb13-127" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb13-128"><a href="#cb13-128" aria-hidden="true" tabindex="-1"></a>Y_i \mid X_i \sim \operatorname{Poisson}(\lambda_i), \qquad</span>
+<span id="cb13-129"><a href="#cb13-129" aria-hidden="true" tabindex="-1"></a>\log(\lambda_i) = \beta_0 + \beta_1 X_{1i} + \cdots + \beta_k X_{ki}.</span>
+<span id="cb13-130"><a href="#cb13-130" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb13-131"><a href="#cb13-131" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-132"><a href="#cb13-132" aria-hidden="true" tabindex="-1"></a>Exponentiating the linear predictor gives $\lambda_i = E<span class="co">[</span><span class="ot">Y_i \mid X_i</span><span class="co">]</span> &gt; 0$. A cell can have an expected count of **0.18** even though each observed count is a whole number. Holding the other features fixed, a one-unit increase in $X_j$ multiplies the expected count by $e^{\beta_j}$. The percentage change is $100(e^{\beta_j}-1)$. For $\beta_j=0.20$, the multiplier is about 1.22, or a **22% increase**.</span>
+<span id="cb13-133"><a href="#cb13-133" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-134"><a href="#cb13-134" aria-hidden="true" tabindex="-1"></a>Under the Poisson assumption, $\operatorname{Var}(Y_i \mid X_i)=E<span class="co">[</span><span class="ot">Y_i \mid X_i</span><span class="co">]</span>$. A first look at the distribution gives:</span>
+<span id="cb13-135"><a href="#cb13-135" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-136"><a href="#cb13-136" aria-hidden="true" tabindex="-1"></a><span class="in">~~~r</span></span>
+<span id="cb13-137"><a href="#cb13-137" aria-hidden="true" tabindex="-1"></a><span class="fu">c</span>(<span class="at">mean =</span> <span class="fu">mean</span>(fishnet<span class="sc">$</span>burglaries), <span class="at">variance =</span> <span class="fu">var</span>(fishnet<span class="sc">$</span>burglaries))</span>
+<span id="cb13-138"><a href="#cb13-138" aria-hidden="true" tabindex="-1"></a><span class="co"># mean = 0.1827099; variance = 0.3379670</span></span>
+<span id="cb13-139"><a href="#cb13-139" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb13-140"><a href="#cb13-140" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-141"><a href="#cb13-141" aria-hidden="true" tabindex="-1"></a>The overall variance exceeds the overall mean. Because cells have different predictors and expected counts, this observation is a reason to check **conditional dispersion after fitting**. If substantial overdispersion persists, negative binomial regression is a candidate. The notes give this example specification for later consideration:</span>
+<span id="cb13-142"><a href="#cb13-142" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-143"><a href="#cb13-143" aria-hidden="true" tabindex="-1"></a><span class="in">~~~r</span></span>
+<span id="cb13-144"><a href="#cb13-144" aria-hidden="true" tabindex="-1"></a>nb_model <span class="ot">&lt;-</span> MASS<span class="sc">::</span><span class="fu">glm.nb</span>(burglaries <span class="sc">~</span> cars_cnt, <span class="at">data =</span> fishnet)</span>
+<span id="cb13-145"><a href="#cb13-145" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb13-146"><a href="#cb13-146" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-147"><a href="#cb13-147" aria-hidden="true" tabindex="-1"></a><span class="fu">### 7. Four spatial features from 2024 conditions</span></span>
+<span id="cb13-148"><a href="#cb13-148" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-149"><a href="#cb13-149" aria-hidden="true" tabindex="-1"></a>Three 311 service categories supply the environmental records. The queries restrict requests to 2024 so that the features precede the 2025 outcome.</span>
+<span id="cb13-150"><a href="#cb13-150" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-151"><a href="#cb13-151" aria-hidden="true" tabindex="-1"></a><span class="in">~~~r</span></span>
+<span id="cb13-152"><a href="#cb13-152" aria-hidden="true" tabindex="-1"></a>get_311 <span class="ot">&lt;-</span> <span class="cf">function</span>(service) {</span>
+<span id="cb13-153"><a href="#cb13-153" aria-hidden="true" tabindex="-1"></a>  <span class="fu">carto_get</span>(<span class="fu">paste0</span>(</span>
+<span id="cb13-154"><a href="#cb13-154" aria-hidden="true" tabindex="-1"></a>    <span class="st">"SELECT the_geom FROM public_cases_fc</span></span>
+<span id="cb13-155"><a href="#cb13-155" aria-hidden="true" tabindex="-1"></a><span class="st">     WHERE service_name = '"</span>, service, <span class="st">"'</span></span>
+<span id="cb13-156"><a href="#cb13-156" aria-hidden="true" tabindex="-1"></a><span class="st">       AND requested_datetime &gt;= '2024-01-01'</span></span>
+<span id="cb13-157"><a href="#cb13-157" aria-hidden="true" tabindex="-1"></a><span class="st">       AND requested_datetime &lt; '2025-01-01'</span></span>
+<span id="cb13-158"><a href="#cb13-158" aria-hidden="true" tabindex="-1"></a><span class="st">       AND the_geom IS NOT NULL"</span></span>
+<span id="cb13-159"><a href="#cb13-159" aria-hidden="true" tabindex="-1"></a>  )) <span class="sc">%&gt;%</span> <span class="fu">st_transform</span>(<span class="dv">2272</span>)</span>
+<span id="cb13-160"><a href="#cb13-160" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb13-161"><a href="#cb13-161" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-162"><a href="#cb13-162" aria-hidden="true" tabindex="-1"></a>abandoned_cars <span class="ot">&lt;-</span> <span class="fu">get_311</span>(<span class="st">"Abandoned Vehicle"</span>)</span>
+<span id="cb13-163"><a href="#cb13-163" aria-hidden="true" tabindex="-1"></a>light_outages  <span class="ot">&lt;-</span> <span class="fu">get_311</span>(<span class="st">"Street Light Outage"</span>)</span>
+<span id="cb13-164"><a href="#cb13-164" aria-hidden="true" tabindex="-1"></a>graffiti       <span class="ot">&lt;-</span> <span class="fu">get_311</span>(<span class="st">"Graffiti Removal"</span>)</span>
+<span id="cb13-165"><a href="#cb13-165" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb13-166"><a href="#cb13-166" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-167"><a href="#cb13-167" aria-hidden="true" tabindex="-1"></a>For distances, use the cell centroid as the query point and the event coordinates as the reference set. <span class="in">`get.knnx()`</span> returns the distances to the nearest $k$ events, and <span class="in">`rowMeans()`</span> averages those distances separately for each cell. City Hall is supplied in longitude and latitude, then projected into the same coordinate system.</span>
+<span id="cb13-168"><a href="#cb13-168" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-169"><a href="#cb13-169" aria-hidden="true" tabindex="-1"></a><span class="in">~~~r</span></span>
+<span id="cb13-170"><a href="#cb13-170" aria-hidden="true" tabindex="-1"></a>centroids <span class="ot">&lt;-</span> <span class="fu">st_centroid</span>(fishnet)</span>
+<span id="cb13-171"><a href="#cb13-171" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-172"><a href="#cb13-172" aria-hidden="true" tabindex="-1"></a>knn_dist <span class="ot">&lt;-</span> <span class="cf">function</span>(from, to, k) {</span>
+<span id="cb13-173"><a href="#cb13-173" aria-hidden="true" tabindex="-1"></a>  nn <span class="ot">&lt;-</span> <span class="fu">get.knnx</span>(<span class="fu">st_coordinates</span>(to), <span class="fu">st_coordinates</span>(from), <span class="at">k =</span> k)</span>
+<span id="cb13-174"><a href="#cb13-174" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rowMeans</span>(nn<span class="sc">$</span>nn.dist)</span>
+<span id="cb13-175"><a href="#cb13-175" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb13-176"><a href="#cb13-176" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-177"><a href="#cb13-177" aria-hidden="true" tabindex="-1"></a>city_hall <span class="ot">&lt;-</span> <span class="fu">st_sfc</span>(<span class="fu">st_point</span>(<span class="fu">c</span>(<span class="sc">-</span><span class="fl">75.1635</span>, <span class="fl">39.9526</span>)), <span class="at">crs =</span> <span class="dv">4326</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb13-178"><a href="#cb13-178" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_transform</span>(<span class="dv">2272</span>)</span>
+<span id="cb13-179"><a href="#cb13-179" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-180"><a href="#cb13-180" aria-hidden="true" tabindex="-1"></a>fishnet <span class="ot">&lt;-</span> fishnet <span class="sc">%&gt;%</span></span>
+<span id="cb13-181"><a href="#cb13-181" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb13-182"><a href="#cb13-182" aria-hidden="true" tabindex="-1"></a>    <span class="at">cars_cnt =</span> <span class="fu">lengths</span>(<span class="fu">st_intersects</span>(., abandoned_cars)),</span>
+<span id="cb13-183"><a href="#cb13-183" aria-hidden="true" tabindex="-1"></a>    <span class="at">light_nn1 =</span> <span class="fu">knn_dist</span>(centroids, light_outages, <span class="at">k =</span> <span class="dv">1</span>),</span>
+<span id="cb13-184"><a href="#cb13-184" aria-hidden="true" tabindex="-1"></a>    <span class="at">graffiti_nn3 =</span> <span class="fu">knn_dist</span>(centroids, graffiti, <span class="at">k =</span> <span class="dv">3</span>),</span>
+<span id="cb13-185"><a href="#cb13-185" aria-hidden="true" tabindex="-1"></a>    <span class="at">cityhall_mi =</span> <span class="fu">as.numeric</span>(<span class="fu">st_distance</span>(centroids, city_hall)) <span class="sc">/</span> <span class="dv">5280</span>,</span>
+<span id="cb13-186"><a href="#cb13-186" aria-hidden="true" tabindex="-1"></a>    <span class="at">log_light_nn1 =</span> <span class="fu">log</span>(light_nn1),</span>
+<span id="cb13-187"><a href="#cb13-187" aria-hidden="true" tabindex="-1"></a>    <span class="at">log_graffiti_nn3 =</span> <span class="fu">log</span>(graffiti_nn3)</span>
+<span id="cb13-188"><a href="#cb13-188" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb13-189"><a href="#cb13-189" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb13-190"><a href="#cb13-190" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-191"><a href="#cb13-191" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Feature <span class="pp">|</span> Measurement <span class="pp">|</span></span>
+<span id="cb13-192"><a href="#cb13-192" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|</span></span>
+<span id="cb13-193"><a href="#cb13-193" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`cars_cnt`</span> <span class="pp">|</span> Number of abandoned-vehicle requests inside the cell <span class="pp">|</span></span>
+<span id="cb13-194"><a href="#cb13-194" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`light_nn1`</span> <span class="pp">|</span> Distance from the centroid to the nearest reported street light outage <span class="pp">|</span></span>
+<span id="cb13-195"><a href="#cb13-195" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`graffiti_nn3`</span> <span class="pp">|</span> Mean distance to the three nearest graffiti-removal requests <span class="pp">|</span></span>
+<span id="cb13-196"><a href="#cb13-196" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`cityhall_mi`</span> <span class="pp">|</span> Distance to a fixed point, City Hall, converted from feet to miles by dividing by 5,280 <span class="pp">|</span></span>
+<span id="cb13-197"><a href="#cb13-197" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-198"><a href="#cb13-198" aria-hidden="true" tabindex="-1"></a>Check for zero and missing distances before taking logarithms of the two distance predictors. The outcome remains a count. The environmental features measure **requests submitted to 311**. Differences in willingness or ability to report a problem can affect their geographic distribution.</span>
+<span id="cb13-199"><a href="#cb13-199" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-200"><a href="#cb13-200" aria-hidden="true" tabindex="-1"></a><span class="fu">### 8. A historical hotspot feature using LISA</span></span>
+<span id="cb13-201"><a href="#cb13-201" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-202"><a href="#cb13-202" aria-hidden="true" tabindex="-1"></a>First count the **2024** burglaries in each cell. Local indicators of spatial association (LISA) identify places where a high historical count is surrounded by high counts in neighboring cells.</span>
+<span id="cb13-203"><a href="#cb13-203" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-204"><a href="#cb13-204" aria-hidden="true" tabindex="-1"></a><span class="in">~~~r</span></span>
+<span id="cb13-205"><a href="#cb13-205" aria-hidden="true" tabindex="-1"></a>fishnet <span class="ot">&lt;-</span> fishnet <span class="sc">%&gt;%</span></span>
+<span id="cb13-206"><a href="#cb13-206" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">burg_2024 =</span> <span class="fu">lengths</span>(<span class="fu">st_intersects</span>(., burg_2024)))</span>
+<span id="cb13-207"><a href="#cb13-207" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-208"><a href="#cb13-208" aria-hidden="true" tabindex="-1"></a>nb <span class="ot">&lt;-</span> <span class="fu">knn2nb</span>(<span class="fu">knearneigh</span>(<span class="fu">st_coordinates</span>(centroids), <span class="at">k =</span> <span class="dv">8</span>))</span>
+<span id="cb13-209"><a href="#cb13-209" aria-hidden="true" tabindex="-1"></a>lw <span class="ot">&lt;-</span> <span class="fu">nb2listw</span>(nb, <span class="at">style =</span> <span class="st">"W"</span>)</span>
+<span id="cb13-210"><a href="#cb13-210" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-211"><a href="#cb13-211" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">5080</span>)</span>
+<span id="cb13-212"><a href="#cb13-212" aria-hidden="true" tabindex="-1"></a>lisa <span class="ot">&lt;-</span> <span class="fu">localmoran_perm</span>(fishnet<span class="sc">$</span>burg_2024, lw, <span class="at">nsim =</span> <span class="dv">999</span>)</span>
+<span id="cb13-213"><a href="#cb13-213" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-214"><a href="#cb13-214" aria-hidden="true" tabindex="-1"></a>fishnet <span class="ot">&lt;-</span> fishnet <span class="sc">%&gt;%</span></span>
+<span id="cb13-215"><a href="#cb13-215" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb13-216"><a href="#cb13-216" aria-hidden="true" tabindex="-1"></a>    <span class="at">quadrant =</span> <span class="fu">attr</span>(lisa, <span class="st">"quadr"</span>)<span class="sc">$</span>mean,</span>
+<span id="cb13-217"><a href="#cb13-217" aria-hidden="true" tabindex="-1"></a>    <span class="at">p_value =</span> lisa[, <span class="st">"Pr(folded) Sim"</span>],</span>
+<span id="cb13-218"><a href="#cb13-218" aria-hidden="true" tabindex="-1"></a>    <span class="at">hotspot =</span> quadrant <span class="sc">==</span> <span class="st">"High-High"</span> <span class="sc">&amp;</span> p_value <span class="sc">&lt;</span> <span class="fl">0.05</span></span>
+<span id="cb13-219"><a href="#cb13-219" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb13-220"><a href="#cb13-220" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-221"><a href="#cb13-221" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(fishnet<span class="sc">$</span>hotspot)</span>
+<span id="cb13-222"><a href="#cb13-222" aria-hidden="true" tabindex="-1"></a><span class="co"># FALSE: 15,639; TRUE: 775</span></span>
+<span id="cb13-223"><a href="#cb13-223" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb13-224"><a href="#cb13-224" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-225"><a href="#cb13-225" aria-hidden="true" tabindex="-1"></a>On a regular interior grid, eight nearest neighbors approximate the four edge-sharing and four corner-sharing neighbors. The kNN rule can give different neighbors from strict queen contiguity at the boundary. <span class="in">`style = "W"`</span> row-standardizes the weights. The local Moran test uses 999 permutations. A cell qualifies as a hotspot when it falls in the High-High quadrant and its permutation $p$-value is below 0.05. This rule identified **775 cells**. Applying an unadjusted threshold across thousands of local tests can flag some cells by chance.</span>
+<span id="cb13-226"><a href="#cb13-226" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-227"><a href="#cb13-227" aria-hidden="true" tabindex="-1"></a><span class="in">~~~r</span></span>
+<span id="cb13-228"><a href="#cb13-228" aria-hidden="true" tabindex="-1"></a>hot_pts <span class="ot">&lt;-</span> centroids[fishnet<span class="sc">$</span>hotspot, ]</span>
+<span id="cb13-229"><a href="#cb13-229" aria-hidden="true" tabindex="-1"></a>fishnet <span class="ot">&lt;-</span> fishnet <span class="sc">%&gt;%</span></span>
+<span id="cb13-230"><a href="#cb13-230" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">hotspot_dist_mi =</span> <span class="fu">knn_dist</span>(centroids, hot_pts, <span class="at">k =</span> <span class="dv">1</span>) <span class="sc">/</span> <span class="dv">5280</span>)</span>
+<span id="cb13-231"><a href="#cb13-231" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb13-232"><a href="#cb13-232" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-233"><a href="#cb13-233" aria-hidden="true" tabindex="-1"></a>A cell 0.4 miles from the nearest historical hotspot and one 2.0 miles away now receive different values of a continuous predictor. Ask whether this distance could have been known at prediction time. Using 2025 burglaries to locate hotspots and then predict the same year's burglaries would leak the target. Using 2024 records makes the feature historically available. A separate holdout is still needed to evaluate the fitted model.</span>
+<span id="cb13-234"><a href="#cb13-234" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-235"><a href="#cb13-235" aria-hidden="true" tabindex="-1"></a><span class="fu">### 9. OLS and Poisson with the same predictors</span></span>
+<span id="cb13-236"><a href="#cb13-236" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-237"><a href="#cb13-237" aria-hidden="true" tabindex="-1"></a><span class="in">~~~r</span></span>
+<span id="cb13-238"><a href="#cb13-238" aria-hidden="true" tabindex="-1"></a>f <span class="ot">&lt;-</span> burglaries <span class="sc">~</span> cars_cnt <span class="sc">+</span> log_light_nn1 <span class="sc">+</span> log_graffiti_nn3 <span class="sc">+</span></span>
+<span id="cb13-239"><a href="#cb13-239" aria-hidden="true" tabindex="-1"></a>  cityhall_mi <span class="sc">+</span> hotspot_dist_mi</span>
+<span id="cb13-240"><a href="#cb13-240" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-241"><a href="#cb13-241" aria-hidden="true" tabindex="-1"></a>ols  <span class="ot">&lt;-</span> <span class="fu">lm</span>(f, <span class="at">data =</span> fishnet)</span>
+<span id="cb13-242"><a href="#cb13-242" aria-hidden="true" tabindex="-1"></a>pois <span class="ot">&lt;-</span> <span class="fu">glm</span>(f, <span class="at">family =</span> <span class="st">"poisson"</span>, <span class="at">data =</span> fishnet)</span>
+<span id="cb13-243"><a href="#cb13-243" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-244"><a href="#cb13-244" aria-hidden="true" tabindex="-1"></a>fishnet <span class="ot">&lt;-</span> fishnet <span class="sc">%&gt;%</span></span>
+<span id="cb13-245"><a href="#cb13-245" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb13-246"><a href="#cb13-246" aria-hidden="true" tabindex="-1"></a>    <span class="at">pred_ols =</span> <span class="fu">predict</span>(ols),</span>
+<span id="cb13-247"><a href="#cb13-247" aria-hidden="true" tabindex="-1"></a>    <span class="at">pred_pois =</span> <span class="fu">predict</span>(pois, <span class="at">type =</span> <span class="st">"response"</span>)</span>
+<span id="cb13-248"><a href="#cb13-248" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb13-249"><a href="#cb13-249" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-250"><a href="#cb13-250" aria-hidden="true" tabindex="-1"></a><span class="fu">c</span>(</span>
+<span id="cb13-251"><a href="#cb13-251" aria-hidden="true" tabindex="-1"></a>  <span class="at">negative_ols =</span> <span class="fu">sum</span>(fishnet<span class="sc">$</span>pred_ols <span class="sc">&lt;</span> <span class="dv">0</span>),</span>
+<span id="cb13-252"><a href="#cb13-252" aria-hidden="true" tabindex="-1"></a>  <span class="at">negative_pois =</span> <span class="fu">sum</span>(fishnet<span class="sc">$</span>pred_pois <span class="sc">&lt;</span> <span class="dv">0</span>)</span>
+<span id="cb13-253"><a href="#cb13-253" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb13-254"><a href="#cb13-254" aria-hidden="true" tabindex="-1"></a><span class="co"># negative_ols = 3277; negative_pois = 0</span></span>
+<span id="cb13-255"><a href="#cb13-255" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb13-256"><a href="#cb13-256" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-257"><a href="#cb13-257" aria-hidden="true" tabindex="-1"></a>OLS produced negative predicted counts for **3,277 cells**. The Poisson model produced positive fitted means throughout. For a Poisson GLM, <span class="in">`predict()`</span> defaults to the link scale, $\log\lambda$. Use <span class="in">`type = "response"`</span> to obtain expected counts before comparing predictions with observations or computing RMSE.</span>
+<span id="cb13-258"><a href="#cb13-258" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-259"><a href="#cb13-259" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Predictor <span class="pp">|</span> Coefficient <span class="pp">|</span> Approximate multiplier <span class="pp">|</span> Interpretation, holding other predictors fixed <span class="pp">|</span></span>
+<span id="cb13-260"><a href="#cb13-260" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---:|---:|---|</span></span>
+<span id="cb13-261"><a href="#cb13-261" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Intercept <span class="pp">|</span> 1.920 <span class="pp">|</span> 6.81 <span class="pp">|</span> Expected count with all model predictors at zero, which may describe an unusual cell <span class="pp">|</span></span>
+<span id="cb13-262"><a href="#cb13-262" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`cars_cnt`</span> <span class="pp">|</span> 0.026 <span class="pp">|</span> 1.03 <span class="pp">|</span> One additional abandoned-vehicle request corresponds to about 3% more expected burglaries. <span class="pp">|</span></span>
+<span id="cb13-263"><a href="#cb13-263" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`log_light_nn1`</span> <span class="pp">|</span> -0.341 <span class="pp">|</span> 0.711 <span class="pp">|</span> A one-unit increase in log distance multiplies the expected count by 0.711. <span class="pp">|</span></span>
+<span id="cb13-264"><a href="#cb13-264" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`log_graffiti_nn3`</span> <span class="pp">|</span> -0.113 <span class="pp">|</span> 0.893 <span class="pp">|</span> A one-unit increase in log distance multiplies the expected count by 0.893. <span class="pp">|</span></span>
+<span id="cb13-265"><a href="#cb13-265" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`cityhall_mi`</span> <span class="pp">|</span> -0.017 <span class="pp">|</span> 0.983 <span class="pp">|</span> One additional mile from City Hall corresponds to about a 1.7% decrease. <span class="pp">|</span></span>
+<span id="cb13-266"><a href="#cb13-266" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`hotspot_dist_mi`</span> <span class="pp">|</span> -1.450 <span class="pp">|</span> 0.234 <span class="pp">|</span> One additional mile from a historical hotspot corresponds to about a 76.6% decrease. <span class="pp">|</span></span>
+<span id="cb13-267"><a href="#cb13-267" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-268"><a href="#cb13-268" aria-hidden="true" tabindex="-1"></a>For <span class="in">`log_light_nn1`</span>, one unit on the log scale means multiplying the original distance by $e \approx 2.718$. A 1% increase in the original distance corresponds to approximately a **0.341% decrease** in expected recorded burglaries. These associations alone cannot establish that abandoned cars, lighting conditions, or graffiti cause burglaries.</span>
+<span id="cb13-269"><a href="#cb13-269" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-270"><a href="#cb13-270" aria-hidden="true" tabindex="-1"></a><span class="fu">### 10. Comparing the model with a historical KDE baseline</span></span>
+<span id="cb13-271"><a href="#cb13-271" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-272"><a href="#cb13-272" aria-hidden="true" tabindex="-1"></a>Kernel density estimation smooths historical event locations into a continuous density surface. The example uses the bounding box of the fishnet as the observation window, a **1,000-foot bandwidth**, and 2024 burglaries within Philadelphia. It reads the smoothed density at each cell centroid.</span>
+<span id="cb13-273"><a href="#cb13-273" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-274"><a href="#cb13-274" aria-hidden="true" tabindex="-1"></a><span class="in">~~~r</span></span>
+<span id="cb13-275"><a href="#cb13-275" aria-hidden="true" tabindex="-1"></a>bb <span class="ot">&lt;-</span> <span class="fu">st_bbox</span>(fishnet)</span>
+<span id="cb13-276"><a href="#cb13-276" aria-hidden="true" tabindex="-1"></a>win <span class="ot">&lt;-</span> <span class="fu">owin</span>(</span>
+<span id="cb13-277"><a href="#cb13-277" aria-hidden="true" tabindex="-1"></a>  <span class="at">xrange =</span> <span class="fu">c</span>(bb[<span class="st">"xmin"</span>], bb[<span class="st">"xmax"</span>]),</span>
+<span id="cb13-278"><a href="#cb13-278" aria-hidden="true" tabindex="-1"></a>  <span class="at">yrange =</span> <span class="fu">c</span>(bb[<span class="st">"ymin"</span>], bb[<span class="st">"ymax"</span>])</span>
+<span id="cb13-279"><a href="#cb13-279" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb13-280"><a href="#cb13-280" aria-hidden="true" tabindex="-1"></a>xy_2024 <span class="ot">&lt;-</span> <span class="fu">st_coordinates</span>(<span class="fu">st_filter</span>(burg_2024, philly))</span>
+<span id="cb13-281"><a href="#cb13-281" aria-hidden="true" tabindex="-1"></a>kde_2024 <span class="ot">&lt;-</span> <span class="fu">density</span>(</span>
+<span id="cb13-282"><a href="#cb13-282" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ppp</span>(xy_2024[, <span class="dv">1</span>], xy_2024[, <span class="dv">2</span>], <span class="at">window =</span> win),</span>
+<span id="cb13-283"><a href="#cb13-283" aria-hidden="true" tabindex="-1"></a>  <span class="at">sigma =</span> <span class="dv">1000</span></span>
+<span id="cb13-284"><a href="#cb13-284" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb13-285"><a href="#cb13-285" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-286"><a href="#cb13-286" aria-hidden="true" tabindex="-1"></a>xy_cent <span class="ot">&lt;-</span> <span class="fu">st_coordinates</span>(centroids)</span>
+<span id="cb13-287"><a href="#cb13-287" aria-hidden="true" tabindex="-1"></a>fishnet<span class="sc">$</span>kde_2024 <span class="ot">&lt;-</span> <span class="fu">safelookup</span>(</span>
+<span id="cb13-288"><a href="#cb13-288" aria-hidden="true" tabindex="-1"></a>  kde_2024,</span>
+<span id="cb13-289"><a href="#cb13-289" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ppp</span>(xy_cent[, <span class="dv">1</span>], xy_cent[, <span class="dv">2</span>], <span class="at">window =</span> win)</span>
+<span id="cb13-290"><a href="#cb13-290" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb13-291"><a href="#cb13-291" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb13-292"><a href="#cb13-292" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-293"><a href="#cb13-293" aria-hidden="true" tabindex="-1"></a>Rank cells separately by their Poisson fitted means and their historical KDE densities. For each ranking, select cells at or above the 90th percentile. **Capture** is the fraction of all recorded 2025 burglaries falling in those selected cells.</span>
+<span id="cb13-294"><a href="#cb13-294" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-295"><a href="#cb13-295" aria-hidden="true" tabindex="-1"></a><span class="in">~~~r</span></span>
+<span id="cb13-296"><a href="#cb13-296" aria-hidden="true" tabindex="-1"></a>fishnet <span class="sc">%&gt;%</span></span>
+<span id="cb13-297"><a href="#cb13-297" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_drop_geometry</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb13-298"><a href="#cb13-298" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb13-299"><a href="#cb13-299" aria-hidden="true" tabindex="-1"></a>    <span class="at">model_top =</span> pred_pois <span class="sc">&gt;=</span> <span class="fu">quantile</span>(pred_pois, <span class="fl">0.9</span>),</span>
+<span id="cb13-300"><a href="#cb13-300" aria-hidden="true" tabindex="-1"></a>    <span class="at">kde_top =</span> kde_2024 <span class="sc">&gt;=</span> <span class="fu">quantile</span>(kde_2024, <span class="fl">0.9</span>)</span>
+<span id="cb13-301"><a href="#cb13-301" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb13-302"><a href="#cb13-302" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(</span>
+<span id="cb13-303"><a href="#cb13-303" aria-hidden="true" tabindex="-1"></a>    <span class="at">model =</span> <span class="fu">sum</span>(burglaries[model_top]) <span class="sc">/</span> <span class="fu">sum</span>(burglaries),</span>
+<span id="cb13-304"><a href="#cb13-304" aria-hidden="true" tabindex="-1"></a>    <span class="at">kde   =</span> <span class="fu">sum</span>(burglaries[kde_top]) <span class="sc">/</span> <span class="fu">sum</span>(burglaries)</span>
+<span id="cb13-305"><a href="#cb13-305" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb13-306"><a href="#cb13-306" aria-hidden="true" tabindex="-1"></a><span class="co"># model = 0.3967989; kde = 0.4598199</span></span>
+<span id="cb13-307"><a href="#cb13-307" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb13-308"><a href="#cb13-308" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-309"><a href="#cb13-309" aria-hidden="true" tabindex="-1"></a>The Poisson selection captured **39.7%** of recorded burglaries, and the historical KDE selection captured **46.0%**. The Poisson coefficients were estimated using the very 2025 outcomes used to score the model. KDE used only 2024 incidents. The comparison illustrates how a simple baseline can rank cells well, but its design cannot establish either method's advantage on future data. A fair forecast comparison would fit both methods using information available before a common held-out period and then score both on that period. A geographic holdout instead tests transfer to unseen areas.</span>
+<span id="cb13-310"><a href="#cb13-310" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-311"><a href="#cb13-311" aria-hidden="true" tabindex="-1"></a><span class="fu">### 11. How reporting and recording shape the outcome</span></span>
+<span id="cb13-312"><a href="#cb13-312" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-313"><a href="#cb13-313" aria-hidden="true" tabindex="-1"></a>An event must occur, come to someone's attention, and enter the police record. For the reporting pathway illustrated in the notes, a simplified relationship is</span>
+<span id="cb13-314"><a href="#cb13-314" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-315"><a href="#cb13-315" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb13-316"><a href="#cb13-316" aria-hidden="true" tabindex="-1"></a>E<span class="co">[</span><span class="ot">\text{recorded count}</span><span class="co">]</span> \approx</span>
+<span id="cb13-317"><a href="#cb13-317" aria-hidden="true" tabindex="-1"></a>\text{actual count} \times P(\text{reported}\mid\text{event})</span>
+<span id="cb13-318"><a href="#cb13-318" aria-hidden="true" tabindex="-1"></a>\times P(\text{recorded}\mid\text{reported event}).</span>
+<span id="cb13-319"><a href="#cb13-319" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb13-320"><a href="#cb13-320" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-321"><a href="#cb13-321" aria-hidden="true" tabindex="-1"></a>This expression illustrates the measurement process. Reporting and recording probabilities can vary across incidents and neighborhoods. The slides cite approximate 2024 National Crime Victimization Survey reporting shares of **75% for motor vehicle theft**, **41% for burglary or trespassing**, and **25% for other theft**.</span>
+<span id="cb13-322"><a href="#cb13-322" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-323"><a href="#cb13-323" aria-hidden="true" tabindex="-1"></a>Suppose each of two areas experiences 100 incidents. If their joint reporting and recording probabilities are 0.8 and 0.3, their expected recorded counts are **80 and 30**. A model can accurately predict that gap even though both areas experienced the same number of incidents.</span>
+<span id="cb13-324"><a href="#cb13-324" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-325"><a href="#cb13-325" aria-hidden="true" tabindex="-1"></a>Ordinary cross-validation splits the same database into training and test folds. Both can share the same reporting and enforcement patterns. A low test error can therefore reflect good prediction of the recording process. Compared with the observed transaction price in a house-sale model, a recorded crime count depends on additional decisions about reporting, enforcement, and classification. Assessing the validity of the label and the fairness of deployment requires evidence beyond cross-validation.</span>
+<span id="cb13-326"><a href="#cb13-326" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-327"><a href="#cb13-327" aria-hidden="true" tabindex="-1"></a>The chosen predictors also carry a theory. Abandoned vehicles, broken street lights, and graffiti reflect a *broken windows* hypothesis linking visible disorder with crime risk. Willingness to report, access to 311, and government response all shape the requests we observe. For $Y$, ask how much of a geographic difference comes from the probability of recording an event. For $X$, ask how well reported disorder measures the physical conditions residents experience.</span>
+<span id="cb13-328"><a href="#cb13-328" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-329"><a href="#cb13-329" aria-hidden="true" tabindex="-1"></a><span class="fu">### 12. What each evaluation measure tells us</span></span>
+<span id="cb13-330"><a href="#cb13-330" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-331"><a href="#cb13-331" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Measure <span class="pp">|</span> Question it answers <span class="pp">|</span> Limit of the interpretation <span class="pp">|</span></span>
+<span id="cb13-332"><a href="#cb13-332" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|---|</span></span>
+<span id="cb13-333"><a href="#cb13-333" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> MAE or RMSE <span class="pp">|</span> How far are predicted counts from recorded counts? <span class="pp">|</span> Accuracy against records leaves underlying victimization unmeasured. <span class="pp">|</span></span>
+<span id="cb13-334"><a href="#cb13-334" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Poisson $e^\beta$ <span class="pp">|</span> By what factor does the expected count change for a one-unit increase in a predictor? <span class="pp">|</span> A conditional association alone cannot identify a causal effect. <span class="pp">|</span></span>
+<span id="cb13-335"><a href="#cb13-335" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> LISA <span class="pp">|</span> Where do high-count cells form local High-High clusters? <span class="pp">|</span> The cluster designation leaves its cause open. <span class="pp">|</span></span>
+<span id="cb13-336"><a href="#cb13-336" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Top 10% capture <span class="pp">|</span> What share of recorded incidents falls in the highest-ranked cells? <span class="pp">|</span> Fairness and the effect of intervention need separate evaluation. <span class="pp">|</span></span>
+<span id="cb13-337"><a href="#cb13-337" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Geographic CV (leave-one-group-out) <span class="pp">|</span> How well does a model transfer to a whole police district held out from training? <span class="pp">|</span> Geographic separation can preserve biases already present in the labels. <span class="pp">|</span></span>
+<span id="cb13-338"><a href="#cb13-338" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Time holdout <span class="pp">|</span> How well do past data predict records in a later period? <span class="pp">|</span> Unreported incidents remain absent from the evaluation. <span class="pp">|</span></span>
+<span id="cb13-339"><a href="#cb13-339" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-340"><a href="#cb13-340" aria-hidden="true" tabindex="-1"></a><span class="fu">## Proving R Works</span></span>
+<span id="cb13-341"><a href="#cb13-341" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-342"><a href="#cb13-342" aria-hidden="true" tabindex="-1"></a><span class="in">~~~{r}</span></span>
+<span id="cb13-343"><a href="#cb13-343" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: poisson-coefficient-example</span></span>
+<span id="cb13-344"><a href="#cb13-344" aria-hidden="true" tabindex="-1"></a><span class="co"># Expected percentage change for a one-mile increase in hotspot distance</span></span>
+<span id="cb13-345"><a href="#cb13-345" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="dv">100</span> <span class="sc">*</span> (<span class="fu">exp</span>(<span class="sc">-</span><span class="fl">1.450</span>) <span class="sc">-</span> <span class="dv">1</span>), <span class="dv">1</span>)</span>
+<span id="cb13-346"><a href="#cb13-346" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb13-347"><a href="#cb13-347" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-348"><a href="#cb13-348" aria-hidden="true" tabindex="-1"></a><span class="in">~~~{r}</span></span>
+<span id="cb13-349"><a href="#cb13-349" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: session-info</span></span>
+<span id="cb13-350"><a href="#cb13-350" aria-hidden="true" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span>
+<span id="cb13-351"><a href="#cb13-351" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb13-352"><a href="#cb13-352" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-353"><a href="#cb13-353" aria-hidden="true" tabindex="-1"></a><span class="fu">## Reflection</span></span>
+<span id="cb13-354"><a href="#cb13-354" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-355"><a href="#cb13-355" aria-hidden="true" tabindex="-1"></a>The two-neighborhood example changed how I read a hotspot map. A model could predict 80 records in one area and 30 in another even if both experienced 100 incidents. Before using the map to allocate resources, I would want to know how reporting and patrol practices differ across those areas. For the forecasting question, I would also compare the Poisson model and historical KDE on the same future period.</span>
+<span id="cb13-356"><a href="#cb13-356" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-357"><a href="#cb13-357" aria-hidden="true" tabindex="-1"></a><span class="fu">## Questions I Still Have</span></span>
+<span id="cb13-358"><a href="#cb13-358" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-359"><a href="#cb13-359" aria-hidden="true" tabindex="-1"></a>None</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></div>
+</div></div></div></div></div>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
