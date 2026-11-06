@@ -1,0 +1,375 @@
+---
+title: "Lab 9: Predicting Burglary in Chicago"
+subtitle: "MUSA 5080 · Week 9 · Ungraded"
+format:
+  html:
+    toc: true
+    code-fold: false
+execute:
+  warning: false
+  message: false
+---
+
+## What you're doing today
+
+In class demonstrated some code to construct a burglary model for Philadelphia. 
+Now you rebuild it for **Chicago**, your new favorite city!
+
+The rules are the same as in the slides:
+
+- **2024** data builds the features
+- **2025** burglaries are the outcome
+
+
+Wherever you see `___`, fill it in. Type the code yourself; don't copy it from the slides.
+
+::: {.callout-tip}
+## Getting Chicago data
+This is the same Socrata portal as the last assignment, so the cheat sheet still applies:
+
+- Put filter values in **single quotes**. They're **case-sensitive** (`'BURGLARY'`, not `'Burglary'`).
+- Always set `$limit`. Otherwise Socrata quietly stops at **1,000 rows**.
+- Use `str_squish()` on the where-clause, then download to a tempfile before `st_read()`. That way you see the real error message if something goes wrong.
+:::
+
+## Part 0: Setup
+
+```{r setup}
+#| cache: false
+library(tidyverse)
+library(sf)
+library(spdep)
+library(FNN)
+library(tigris)
+library(patchwork)
+options(tigris_use_cache = TRUE, timeout = max(300, getOption("timeout")))
+
+# Chicago standard: Illinois East State Plane, US feet
+crs_chi <- 3435
+```
+
+## Part 1: Get the data
+
+### 1A. The city boundary
+
+```{r boundary}
+chicago <- places("IL", year = 2024, cb = TRUE, progress_bar = FALSE) %>%
+  filter(NAME == "Chicago") %>%
+  st_transform(crs_chi)
+```
+
+### 1B. Burglaries, 2024 and 2025
+
+Here's 2024, written out in full:
+
+```{r burg-2024}
+where_2024 <- str_squish("primary_type = 'BURGLARY'
+                          AND year = 2024
+                          AND latitude IS NOT NULL")
+
+url_2024 <- paste0("https://data.cityofchicago.org/resource/ijzp-q8t2.geojson?",
+                   "$select=location&$where=", URLencode(where_2024, reserved = TRUE),
+                   "&$limit=100000")
+
+tmp <- tempfile(fileext = ".geojson")
+download.file(url_2024, tmp, quiet = TRUE)
+burg_2024 <- st_read(tmp, quiet = TRUE) %>% st_transform(crs_chi)
+
+nrow(burg_2024)
+```
+
+Now write 2025 yourself:
+
+```{r burg-2025}
+where_2025 <- str_squish("primary_type = 'BURGLARY'
+                          AND year = 2025
+                          AND latitude IS NOT NULL")
+
+url_2025 <- paste0("https://data.cityofchicago.org/resource/ijzp-q8t2.geojson?",
+                   "$select=location&$where=", URLencode(where_2025, reserved = TRUE),
+                   "&$limit=100000")
+
+tmp <- tempfile(fileext = ".geojson")
+download.file(url_2025, tmp, quiet = TRUE)
+burg_2025 <- st_read(tmp, quiet = TRUE) %>% st_transform(crs_chi)
+
+nrow(burg_2025)
+```
+
+**Question 1.1:** Is either count exactly 1,000? What would that tell you?
+
+No. The query returned 8,396 burglaries in 2024 and 9,666 in 2025. A count of exactly 1,000 would suggest that the API may have stopped at its default row limit.
+
+### 1C. 311 requests, 2024
+
+The 311 dataset is `v6vf-nfxy`. **First, find out what the request types are actually called.** Don't guess the spelling.
+
+```{r sr-types}
+params <- c(
+  `$select` = "sr_type,count(*) as n",
+  `$where`  = "created_date between '2024-01-01T00:00:00' and '2024-12-31T23:59:59'",
+  `$group`  = "sr_type",
+  `$order`  = "n DESC",
+  `$limit`  = "100"
+)
+
+types_url <- paste0("https://data.cityofchicago.org/resource/v6vf-nfxy.csv?",
+                    paste0(names(params), "=",
+                           gsub("%20", "+", sapply(params, URLencode, reserved = TRUE), fixed = TRUE),
+                           collapse = "&"))
+
+types_file <- tempfile(fileext = ".csv")
+download.file(types_url, types_file, method = "curl", extra = "--retry 2", quiet = TRUE)
+sr_types <- read_csv(types_file)
+sr_types
+```
+
+Find the exact names for **abandoned vehicles**, **street lights out**, and **graffiti removal** in that list. Then pull each one for 2024:
+
+```{r get-311}
+get_311 <- function(type) {
+  where <- str_squish(paste0("sr_type = '", type, "'
+                              AND created_date between '2024-01-01T00:00:00' and '2024-12-31T23:59:59'
+                              AND latitude IS NOT NULL"))
+  url <- paste0("https://data.cityofchicago.org/resource/v6vf-nfxy.geojson?",
+                "$select=location&$where=", gsub("%20", "+", URLencode(where, reserved = TRUE), fixed = TRUE),
+                "&$limit=200000")
+  tmp <- tempfile(fileext = ".geojson")
+  download.file(url, tmp, method = "curl", extra = "--retry 2", quiet = TRUE)
+  st_read(tmp, quiet = TRUE) %>% st_transform(crs_chi)
+}
+
+abandoned_cars <- get_311("Abandoned Vehicle Complaint")
+light_outages  <- get_311("Street Light Out Complaint")
+graffiti       <- get_311("Graffiti Removal Request")
+
+c(cars = nrow(abandoned_cars), lights = nrow(light_outages), graffiti = nrow(graffiti))
+```
+
+## Part 2: The fishnet
+
+Pick your cell size **now**, before you see any results. The slides used 500 ft for Philadelphia.
+
+```{r fishnet}
+cell_size <- 500   # in feet, because EPSG 3435 is in feet
+
+fishnet <- st_make_grid(chicago, cellsize = cell_size, square = TRUE) %>%
+  st_sf() %>%
+  st_filter(chicago) %>%
+  mutate(cell_id = row_number())
+
+fishnet <- fishnet %>%
+  mutate(burglaries = lengths(st_intersects(., burg_2025)))   # 2025: the outcome
+
+nrow(fishnet)
+```
+
+```{r fishnet-map}
+ggplot(fishnet) +
+  geom_sf(aes(fill = burglaries), color = NA) +
+  scale_fill_viridis_c(option = "magma", direction = -1, trans = "sqrt") +
+  labs(title = "Burglaries per cell, Chicago 2025", fill = "count") +
+  theme_void()
+```
+
+**Question 2.1:** Why a grid instead of Chicago's 77 community areas? Give two reasons.
+
+Equal-sized cells make counts easier to compare across the city. A grid also reveals local hotspots that a total for an entire community area can hide.
+
+**Question 2.2:** Why did you pick that cell size? Name one thing that would change if you doubled it.
+
+I chose 500 feet to match the Philadelphia exercise and keep nearby blocks distinct. Doubling the width to 1,000 feet would quadruple each cell's area and merge some local hotspots.
+
+## Part 3: Look at the outcome first
+
+```{r outcome}
+ggplot(fishnet, aes(burglaries)) +
+  geom_histogram(binwidth = 1, fill = "darkred") +
+  labs(x = "Burglaries in cell", y = "Number of cells") +
+  theme_minimal()
+
+mean(fishnet$burglaries == 0)                                   # share of zeros
+c(mean = mean(fishnet$burglaries), variance = var(fishnet$burglaries))
+```
+
+**Question 3.1:** What share of cells have zero burglaries? Give two reasons, from the slides, that OLS will struggle here.
+
+77.8% of cells had zero burglaries. OLS can predict negative counts, and the spread of the errors tends to increase with the expected count, violating the usual constant-variance assumption.
+
+**Question 3.2:** Compare the mean and the variance. What does a Poisson model assume about them, and does Chicago meet that assumption?
+
+The mean was 0.363 burglaries per cell and the variance was 0.884. Poisson regression assumes equal mean and variance for cells with the same predictors. The raw counts suggest overdispersion, although this comparison alone cannot establish whether it persists after fitting the model.
+
+## Part 4: Features from 2024
+
+Build one of each feature type. These are the same four types as in A4.
+
+```{r features}
+centroids <- st_centroid(fishnet)
+
+knn_dist <- function(from, to, k) {
+  nn <- get.knnx(st_coordinates(to), st_coordinates(from), k = k)
+  rowMeans(nn$nn.dist)
+}
+
+# The Loop: State & Madison
+loop <- st_sfc(st_point(c(-87.6278, 41.8820)), crs = 4326) %>% st_transform(crs_chi)
+
+fishnet <- fishnet %>%
+  mutate(
+    cars_cnt     = lengths(st_intersects(., abandoned_cars)),          # count in cell
+    light_nn1    = knn_dist(centroids, light_outages, k = 1),       # nearest distance
+    graffiti_nn3 = knn_dist(centroids, graffiti, k = 3),       # kNN distance
+    loop_mi      = as.numeric(st_distance(centroids, loop)) / 5280,
+    log_light_nn1    = log(light_nn1),
+    log_graffiti_nn3 = log(graffiti_nn3)
+  )
+```
+
+**Question 4.1:** Why do we log the distances but not `cars_cnt`?
+
+Logging distance lets a change from 100 to 200 feet have a larger effect than a change from 1,000 to 1,100 feet. Keeping `cars_cnt` in counts makes its coefficient interpretable per additional complaint and retains cells with zero complaints.
+
+## Part 5: The hotspot feature
+
+Run LISA on **2024** burglaries and keep only the significant High-High cells.
+
+```{r lisa}
+fishnet <- fishnet %>%
+  mutate(burg_2024 = lengths(st_intersects(., burg_2024)))
+
+nb <- knn2nb(knearneigh(st_coordinates(centroids), k = 8))
+lw <- nb2listw(nb, style = "W")
+
+set.seed(5080)
+lisa <- localmoran_perm(fishnet$burg_2024, lw, nsim = 499)
+
+fishnet <- fishnet %>%
+  mutate(quadrant = attr(lisa, "quadr")$mean,
+         p_value  = lisa[, "Pr(folded) Sim"],
+         hotspot  = quadrant == "High-High" & p_value < 0.05)
+
+table(fishnet$hotspot)
+```
+
+```{r hotspot-map}
+ggplot() +
+  geom_sf(data = fishnet, fill = "grey95", color = NA) +
+  geom_sf(data = filter(fishnet, hotspot), fill = "red", color = NA) +
+  labs(title = "Burglary hotspots, built from 2024") +
+  theme_void()
+```
+
+```{r hotspot-dist}
+hot_pts <- centroids[fishnet$hotspot, ]
+
+fishnet <- fishnet %>%
+  mutate(hotspot_dist_mi = knn_dist(centroids, hot_pts, k = 1) / 5280)
+```
+
+
+## Part 6: OLS vs. Poisson
+
+```{r models}
+f <- burglaries ~ cars_cnt + log_light_nn1 + log_graffiti_nn3 +
+                  loop_mi + hotspot_dist_mi
+
+ols  <- lm(f, data = fishnet)
+pois <- glm(f, family = "poisson", data = fishnet)
+
+fishnet <- fishnet %>%
+  mutate(pred_ols  = predict(ols),
+         pred_pois = predict(pois, type = "response"))
+
+c(negative_ols  = sum(fishnet$pred_ols < 0),
+  negative_pois = sum(fishnet$pred_pois < 0))
+```
+
+```{r coefs}
+tibble(term = names(coef(pois)),
+       beta = coef(pois),
+       exp_beta = exp(coef(pois))) %>%
+  mutate(across(where(is.numeric), ~ round(.x, 3)))
+```
+
+
+## Part 7: Predicted vs. recorded
+
+```{r pred-maps}
+p1 <- ggplot(fishnet) + geom_sf(aes(fill = burglaries), color = NA) +
+  scale_fill_viridis_c(option = "magma", direction = -1, trans = "sqrt") +
+  labs(title = "Recorded, 2025") + theme_void()
+
+p2 <- ggplot(fishnet) + geom_sf(aes(fill = pred_pois), color = NA) +
+  scale_fill_viridis_c(option = "magma", direction = -1, trans = "sqrt") +
+  labs(title = "Predicted (Poisson)") + theme_void()
+
+p1 + p2
+```
+
+```{r errors}
+fishnet <- fishnet %>% mutate(error = pred_pois - burglaries)   # positive = over-predicted
+
+ggplot(fishnet) +
+  geom_sf(aes(fill = error), color = NA) +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  labs(title = "Error: red = over-predicted, blue = under-predicted") +
+  theme_void()
+
+c(rmse_ols  = sqrt(mean((fishnet$pred_ols  - fishnet$burglaries)^2)),
+  rmse_pois = sqrt(mean((fishnet$pred_pois - fishnet$burglaries)^2)))
+```
+
+**Question 7.1:** Where in Chicago does the model over-predict? Under-predict? Describe the pattern in one or two sentences.
+
+The model tended to overpredict in West Elsdon and Archer Heights on the Southwest Side. It tended to underpredict in South Shore and Chatham on the South Side.
+
+## Part 7B: Does it beat last year's map?
+
+Before any model, departments smoothed **last year's** burglaries into a heat map and patrolled the hot parts. Your model has to beat that.
+
+```{r kde}
+library(spatstat.geom)
+library(spatstat.explore)
+
+bb  <- st_bbox(fishnet)   # use the fishnet's extent, so every cell centroid falls inside the window
+win <- owin(xrange = c(bb["xmin"], bb["xmax"]), yrange = c(bb["ymin"], bb["ymax"]))
+
+xy_2024  <- st_coordinates(st_filter(burg_2024, chicago))   # which year? drop points outside the city
+kde_2024 <- density(ppp(xy_2024[, 1], xy_2024[, 2], window = win), sigma = 1000)  # 1000 ft
+
+xy_cent <- st_coordinates(centroids)
+fishnet$kde_2024 <- safelookup(kde_2024, ppp(xy_cent[, 1], xy_cent[, 2], window = win))
+```
+
+You'll probably see a warning about **duplicated points**. That's expected: Chicago geocodes crimes to the block, not the address, so many incidents share coordinates.
+
+Now take the **top 10% of cells** by each method and count how many of **2025's** burglaries fall inside:
+
+```{r compare-kde}
+fishnet %>%
+  st_drop_geometry() %>%
+  mutate(model_top = pred_pois >= quantile(pred_pois, 0.90),
+         kde_top   = kde_2024  >= quantile(kde_2024, 0.90)) %>%
+  summarize(model = sum(burglaries[model_top]) / sum(burglaries),
+            kde   = sum(burglaries[kde_top])   / sum(burglaries))
+```
+
+**Question 7B.1:** Which method captured more of 2025's burglaries in its top 10% of cells? By how much?
+
+The 2024 KDE map captured 30.47% of 2025 burglaries in its top-ranked cells. The Poisson model captured 26.69%, so KDE led by 3.78 percentage points.
+
+**Question 7B.2:** This comparison is rigged in the model's favor. Explain why. (Hint: which of the two has already seen the 2025 data?)
+
+The Poisson model was fitted to the same 2025 burglary counts used to score it. The KDE map used only 2024 burglaries.
+
+**Question 7B.3:** If the model only beats last year's map by a little, what are you getting in exchange for its extra complexity and its extra sources of bias?
+
+A small gain would mean finding only a few more recorded burglaries in the same patrol area, while the 311 features add work and reflect differences in who reports problems. Here the simpler KDE map actually captured more burglaries.
+
+
+
+## Optional challenge (no points)
+
+1. Fit a negative binomial model with `MASS::glm.nb()`, using the same formula. Compare its coefficients and RMSE to the Poisson model's. Given what you found in Question 3.2, which one do you trust more?
+2. Add one more 311 feature from the `sr_types` list. Explain why you expect it to predict burglary *before* you look at whether it does.
