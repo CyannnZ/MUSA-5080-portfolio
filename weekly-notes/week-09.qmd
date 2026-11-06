@@ -1,0 +1,359 @@
+---
+title: "Week 9: Predictive Policing, Fishnets, Poisson Regression, and Dirty Data"
+description: "Predicting recorded residential burglaries in Philadelphia and examining how reporting, policing, and validation shape the results."
+date: 2026-10-30
+---
+
+## What We Did
+
+We divided Philadelphia into 500-foot grid cells and counted the residential burglaries recorded in each cell in 2025. We built predictors from 2024 burglary and 311 records, compared ordinary least squares (OLS) with Poisson regression, and checked how many recorded incidents fell in the top-ranked cells under a Poisson model and a historical density map.
+
+## Key Concepts
+
+- The outcome counts incidents that reached police records. Reporting and enforcement practices affect how well that count represents underlying crime.
+- A fishnet gives each observation a defined area and includes places with zero recorded incidents.
+- Poisson regression models the logarithm of the expected count. A one-unit change in a predictor multiplies the expected count by $e^\beta$, holding other predictors fixed.
+- Features must be available at prediction time. Evaluating a forecast also requires outcomes held out from model fitting.
+- Prediction error, hotspot capture, measurement validity, and fairness answer different questions.
+
+## Note
+
+### 1. What does a predictive policing model predict?
+
+Suppose two neighborhoods experience the same number of offenses, but officers patrol A more frequently and record more incidents there. A model trained on those counts may learn where police are most active. Evaluating it against the same kind of records can reward that pattern.
+
+| Claim | Question to ask |
+|---|---|
+| Efficiency: send officers where they are needed | How closely does the recorded count measure need? |
+| Objectivity: reduce human bias | Which decisions shaped the training data and the choice of features? |
+| Proactivity: anticipate future incidents | Will historical patterns carry forward? |
+| Data-driven deployment | Who reports, who enters the record, and whose experiences go unrecorded? |
+
+The slides group approaches into four broad families:
+
+| Approach | Illustrative method | Input | Example from the slides |
+|---|---|---|---|
+| Hotspot mapping | Kernel density estimation (KDE) | Past incident locations | Smoothed density map |
+| Risk terrain modeling | Logistic regression | Incident points and environmental features | Risk terrain model (RTM) |
+| Machine learning | Random forests or neural networks | Multiple data sources | PredPol and Palantir are discussed as examples of predictive policing systems |
+| Person-based prediction | Network analysis | Social connections | Strategic Subject List |
+
+Before choosing a method, define the **construct** of interest. If the goal is to measure victimization, ask which victims and incidents the database actually captures.
+
+### 2. Dirty data and the feedback loop
+
+Missing values, invalid codes, and inconsistent formats are familiar cleaning problems. Richardson, Schultz, and Crawford (2019) also use *dirty data* for records shaped by biased, improper, or unlawful policing. The slides describe their study of 13 jurisdictions, including Chicago, New Orleans, and Maricopa County.
+
+| Problem | Example | Consequence |
+|---|---|---|
+| Manipulated records | Downgrading charges, false arrests, or discouraging victims from filing reports | The recorded event can differ from what occurred. |
+| Systematic bias | Intensive patrols in some places and limited scrutiny of white-collar offenses | Enforcement intensity changes the spatial distribution of records. |
+| Missing records | A victim does not report an incident, or a complaint goes unprocessed | The event is absent from the training data. |
+| Proxy problems | Arrests as a measure of offending, or 311 calls as a measure of need | The observable indicator measures only part of the intended construct. |
+
+A feedback loop can begin when historical counts lead a model to flag an area as high risk. More patrols can detect more events there even if underlying crime stays level. Those new records become outcomes for the next training round, reinforcing the initial allocation. Deployment itself changes what the system will observe.
+
+### 3. Philadelphia residential burglaries: 2024 features and a 2025 outcome
+
+~~~r
+burg_sql <- function(year) {
+  paste0(
+    "SELECT the_geom, dispatch_date, text_general_code
+     FROM incidents_part1_part2
+     WHERE text_general_code = 'Burglary Residential'
+       AND dispatch_date >= '", year, "-01-01'
+       AND dispatch_date < '", year + 1, "-01-01'
+       AND the_geom IS NOT NULL"
+  )
+}
+
+burg_2024 <- carto_get(burg_sql(2024)) %>% st_transform(2272)
+burg_2025 <- carto_get(burg_sql(2025)) %>% st_transform(2272)
+
+philly <- counties("PA", cb = TRUE, progress_bar = FALSE) %>%
+  filter(NAME == "Philadelphia") %>%
+  st_transform(2272)
+
+c(burg_2024 = nrow(burg_2024), burg_2025 = nrow(burg_2025))
+# 2024: 3,289 records; 2025: 2,999 records
+~~~
+
+`burg_sql()` uses `paste0()` to build the date range from January 1 of the selected year up to, but excluding, January 1 of the next year. The query keeps records with geometry. EPSG:2272 is the Pennsylvania South projected coordinate system used here, with distances in feet.
+
+Each incident is a point. To predict **how many incidents occur in an area**, we first need a common observation unit that can represent both events and their absence. Each 500-by-500-foot cell gets one outcome: its 2025 recorded burglary count.
+
+### 4. Building the fishnet and counting events
+
+Census tract boundaries serve demographic reporting, and tract sizes vary. Eight incidents in a large tract versus four in a small tract tell us little about relative risk without knowing the area, number of homes, or opportunities for burglary. Changing the scale or boundaries of aggregation can change the apparent pattern. This is the **modifiable areal unit problem (MAUP)**.
+
+~~~r
+fishnet <- st_make_grid(philly, cellsize = 500, square = TRUE) %>%
+  st_sf() %>%
+  st_filter(philly) %>%
+  mutate(cell_id = row_number())
+
+fishnet <- fishnet %>%
+  mutate(burglaries = lengths(st_intersects(., burg_2025)))
+
+nrow(fishnet)  # 16414
+~~~
+
+`st_make_grid()` generates squares, `st_sf()` turns them into a spatial table, and `st_filter()` keeps cells intersecting Philadelphia. `row_number()` assigns an ID. For each cell, `st_intersects()` lists matching burglary points and `lengths()` counts them. Week 7 had one row per house and a sale price in dollars. Here each of the **16,414 rows** represents a cell with a nonnegative integer outcome.
+
+~~~r
+ggplot(fishnet) +
+  geom_sf(aes(fill = burglaries), color = NA) +
+  scale_fill_viridis_c(option = "magma", direction = -1, trans = "sqrt") +
+  theme_void()
+
+ggplot(fishnet, aes(burglaries)) +
+  geom_histogram(binwidth = 1)
+
+mean(fishnet$burglaries == 0)  # 0.8740709
+~~~
+
+The histogram has a large bar at zero and relatively few cells to its right. R treats `TRUE` as one when computing the mean, so the last line gives the fraction of cells with zero recorded burglaries: **87.4%**.
+
+### 5. Why use a count model?
+
+OLS can predict a value such as $-0.2$ burglaries. It also treats the outcome as continuous, and the usual constant-variance assumption can fit counts poorly when variability increases with the mean. A Poisson model matches the integer-valued observations with a count distribution, allows the conditional variance to vary with the mean, and gives a positive fitted mean.
+
+Taking `log(Y)` directly would be undefined for the 87.4% of cells with zero events. Adding one makes `log(Y + 1)` computable but changes the quantity being modeled and the interpretation of its coefficients.
+
+### 6. Poisson regression and overdispersion
+
+For cell $i$, the Poisson model with a log link is
+
+$$
+Y_i \mid X_i \sim \operatorname{Poisson}(\lambda_i), \qquad
+\log(\lambda_i) = \beta_0 + \beta_1 X_{1i} + \cdots + \beta_k X_{ki}.
+$$
+
+Exponentiating the linear predictor gives $\lambda_i = E[Y_i \mid X_i] > 0$. A cell can have an expected count of **0.18** even though each observed count is a whole number. Holding the other features fixed, a one-unit increase in $X_j$ multiplies the expected count by $e^{\beta_j}$. The percentage change is $100(e^{\beta_j}-1)$. For $\beta_j=0.20$, the multiplier is about 1.22, or a **22% increase**.
+
+Under the Poisson assumption, $\operatorname{Var}(Y_i \mid X_i)=E[Y_i \mid X_i]$. A first look at the distribution gives:
+
+~~~r
+c(mean = mean(fishnet$burglaries), variance = var(fishnet$burglaries))
+# mean = 0.1827099; variance = 0.3379670
+~~~
+
+The overall variance exceeds the overall mean. Because cells have different predictors and expected counts, this observation is a reason to check **conditional dispersion after fitting**. If substantial overdispersion persists, negative binomial regression is a candidate. The notes give this example specification for later consideration:
+
+~~~r
+nb_model <- MASS::glm.nb(burglaries ~ cars_cnt, data = fishnet)
+~~~
+
+### 7. Four spatial features from 2024 conditions
+
+Three 311 service categories supply the environmental records. The queries restrict requests to 2024 so that the features precede the 2025 outcome.
+
+~~~r
+get_311 <- function(service) {
+  carto_get(paste0(
+    "SELECT the_geom FROM public_cases_fc
+     WHERE service_name = '", service, "'
+       AND requested_datetime >= '2024-01-01'
+       AND requested_datetime < '2025-01-01'
+       AND the_geom IS NOT NULL"
+  )) %>% st_transform(2272)
+}
+
+abandoned_cars <- get_311("Abandoned Vehicle")
+light_outages  <- get_311("Street Light Outage")
+graffiti       <- get_311("Graffiti Removal")
+~~~
+
+For distances, use the cell centroid as the query point and the event coordinates as the reference set. `get.knnx()` returns the distances to the nearest $k$ events, and `rowMeans()` averages those distances separately for each cell. City Hall is supplied in longitude and latitude, then projected into the same coordinate system.
+
+~~~r
+centroids <- st_centroid(fishnet)
+
+knn_dist <- function(from, to, k) {
+  nn <- get.knnx(st_coordinates(to), st_coordinates(from), k = k)
+  rowMeans(nn$nn.dist)
+}
+
+city_hall <- st_sfc(st_point(c(-75.1635, 39.9526)), crs = 4326) %>%
+  st_transform(2272)
+
+fishnet <- fishnet %>%
+  mutate(
+    cars_cnt = lengths(st_intersects(., abandoned_cars)),
+    light_nn1 = knn_dist(centroids, light_outages, k = 1),
+    graffiti_nn3 = knn_dist(centroids, graffiti, k = 3),
+    cityhall_mi = as.numeric(st_distance(centroids, city_hall)) / 5280,
+    log_light_nn1 = log(light_nn1),
+    log_graffiti_nn3 = log(graffiti_nn3)
+  )
+~~~
+
+| Feature | Measurement |
+|---|---|
+| `cars_cnt` | Number of abandoned-vehicle requests inside the cell |
+| `light_nn1` | Distance from the centroid to the nearest reported street light outage |
+| `graffiti_nn3` | Mean distance to the three nearest graffiti-removal requests |
+| `cityhall_mi` | Distance to a fixed point, City Hall, converted from feet to miles by dividing by 5,280 |
+
+Check for zero and missing distances before taking logarithms of the two distance predictors. The outcome remains a count. The environmental features measure **requests submitted to 311**. Differences in willingness or ability to report a problem can affect their geographic distribution.
+
+### 8. A historical hotspot feature using LISA
+
+First count the **2024** burglaries in each cell. Local indicators of spatial association (LISA) identify places where a high historical count is surrounded by high counts in neighboring cells.
+
+~~~r
+fishnet <- fishnet %>%
+  mutate(burg_2024 = lengths(st_intersects(., burg_2024)))
+
+nb <- knn2nb(knearneigh(st_coordinates(centroids), k = 8))
+lw <- nb2listw(nb, style = "W")
+
+set.seed(5080)
+lisa <- localmoran_perm(fishnet$burg_2024, lw, nsim = 999)
+
+fishnet <- fishnet %>%
+  mutate(
+    quadrant = attr(lisa, "quadr")$mean,
+    p_value = lisa[, "Pr(folded) Sim"],
+    hotspot = quadrant == "High-High" & p_value < 0.05
+  )
+
+table(fishnet$hotspot)
+# FALSE: 15,639; TRUE: 775
+~~~
+
+On a regular interior grid, eight nearest neighbors approximate the four edge-sharing and four corner-sharing neighbors. The kNN rule can give different neighbors from strict queen contiguity at the boundary. `style = "W"` row-standardizes the weights. The local Moran test uses 999 permutations. A cell qualifies as a hotspot when it falls in the High-High quadrant and its permutation $p$-value is below 0.05. This rule identified **775 cells**. Applying an unadjusted threshold across thousands of local tests can flag some cells by chance.
+
+~~~r
+hot_pts <- centroids[fishnet$hotspot, ]
+fishnet <- fishnet %>%
+  mutate(hotspot_dist_mi = knn_dist(centroids, hot_pts, k = 1) / 5280)
+~~~
+
+A cell 0.4 miles from the nearest historical hotspot and one 2.0 miles away now receive different values of a continuous predictor. Ask whether this distance could have been known at prediction time. Using 2025 burglaries to locate hotspots and then predict the same year's burglaries would leak the target. Using 2024 records makes the feature historically available. A separate holdout is still needed to evaluate the fitted model.
+
+### 9. OLS and Poisson with the same predictors
+
+~~~r
+f <- burglaries ~ cars_cnt + log_light_nn1 + log_graffiti_nn3 +
+  cityhall_mi + hotspot_dist_mi
+
+ols  <- lm(f, data = fishnet)
+pois <- glm(f, family = "poisson", data = fishnet)
+
+fishnet <- fishnet %>%
+  mutate(
+    pred_ols = predict(ols),
+    pred_pois = predict(pois, type = "response")
+  )
+
+c(
+  negative_ols = sum(fishnet$pred_ols < 0),
+  negative_pois = sum(fishnet$pred_pois < 0)
+)
+# negative_ols = 3277; negative_pois = 0
+~~~
+
+OLS produced negative predicted counts for **3,277 cells**. The Poisson model produced positive fitted means throughout. For a Poisson GLM, `predict()` defaults to the link scale, $\log\lambda$. Use `type = "response"` to obtain expected counts before comparing predictions with observations or computing RMSE.
+
+| Predictor | Coefficient | Approximate multiplier | Interpretation, holding other predictors fixed |
+|---|---:|---:|---|
+| Intercept | 1.920 | 6.81 | Expected count with all model predictors at zero, which may describe an unusual cell |
+| `cars_cnt` | 0.026 | 1.03 | One additional abandoned-vehicle request corresponds to about 3% more expected burglaries. |
+| `log_light_nn1` | -0.341 | 0.711 | A one-unit increase in log distance multiplies the expected count by 0.711. |
+| `log_graffiti_nn3` | -0.113 | 0.893 | A one-unit increase in log distance multiplies the expected count by 0.893. |
+| `cityhall_mi` | -0.017 | 0.983 | One additional mile from City Hall corresponds to about a 1.7% decrease. |
+| `hotspot_dist_mi` | -1.450 | 0.234 | One additional mile from a historical hotspot corresponds to about a 76.6% decrease. |
+
+For `log_light_nn1`, one unit on the log scale means multiplying the original distance by $e \approx 2.718$. A 1% increase in the original distance corresponds to approximately a **0.341% decrease** in expected recorded burglaries. These associations alone cannot establish that abandoned cars, lighting conditions, or graffiti cause burglaries.
+
+### 10. Comparing the model with a historical KDE baseline
+
+Kernel density estimation smooths historical event locations into a continuous density surface. The example uses the bounding box of the fishnet as the observation window, a **1,000-foot bandwidth**, and 2024 burglaries within Philadelphia. It reads the smoothed density at each cell centroid.
+
+~~~r
+bb <- st_bbox(fishnet)
+win <- owin(
+  xrange = c(bb["xmin"], bb["xmax"]),
+  yrange = c(bb["ymin"], bb["ymax"])
+)
+xy_2024 <- st_coordinates(st_filter(burg_2024, philly))
+kde_2024 <- density(
+  ppp(xy_2024[, 1], xy_2024[, 2], window = win),
+  sigma = 1000
+)
+
+xy_cent <- st_coordinates(centroids)
+fishnet$kde_2024 <- safelookup(
+  kde_2024,
+  ppp(xy_cent[, 1], xy_cent[, 2], window = win)
+)
+~~~
+
+Rank cells separately by their Poisson fitted means and their historical KDE densities. For each ranking, select cells at or above the 90th percentile. **Capture** is the fraction of all recorded 2025 burglaries falling in those selected cells.
+
+~~~r
+fishnet %>%
+  st_drop_geometry() %>%
+  mutate(
+    model_top = pred_pois >= quantile(pred_pois, 0.9),
+    kde_top = kde_2024 >= quantile(kde_2024, 0.9)
+  ) %>%
+  summarize(
+    model = sum(burglaries[model_top]) / sum(burglaries),
+    kde   = sum(burglaries[kde_top]) / sum(burglaries)
+  )
+# model = 0.3967989; kde = 0.4598199
+~~~
+
+The Poisson selection captured **39.7%** of recorded burglaries, and the historical KDE selection captured **46.0%**. The Poisson coefficients were estimated using the very 2025 outcomes used to score the model. KDE used only 2024 incidents. The comparison illustrates how a simple baseline can rank cells well, but its design cannot establish either method's advantage on future data. A fair forecast comparison would fit both methods using information available before a common held-out period and then score both on that period. A geographic holdout instead tests transfer to unseen areas.
+
+### 11. How reporting and recording shape the outcome
+
+An event must occur, come to someone's attention, and enter the police record. For the reporting pathway illustrated in the notes, a simplified relationship is
+
+$$
+E[\text{recorded count}] \approx
+\text{actual count} \times P(\text{reported}\mid\text{event})
+\times P(\text{recorded}\mid\text{reported event}).
+$$
+
+This expression illustrates the measurement process. Reporting and recording probabilities can vary across incidents and neighborhoods. The slides cite approximate 2024 National Crime Victimization Survey reporting shares of **75% for motor vehicle theft**, **41% for burglary or trespassing**, and **25% for other theft**.
+
+Suppose each of two areas experiences 100 incidents. If their joint reporting and recording probabilities are 0.8 and 0.3, their expected recorded counts are **80 and 30**. A model can accurately predict that gap even though both areas experienced the same number of incidents.
+
+Ordinary cross-validation splits the same database into training and test folds. Both can share the same reporting and enforcement patterns. A low test error can therefore reflect good prediction of the recording process. Compared with the observed transaction price in a house-sale model, a recorded crime count depends on additional decisions about reporting, enforcement, and classification. Assessing the validity of the label and the fairness of deployment requires evidence beyond cross-validation.
+
+The chosen predictors also carry a theory. Abandoned vehicles, broken street lights, and graffiti reflect a *broken windows* hypothesis linking visible disorder with crime risk. Willingness to report, access to 311, and government response all shape the requests we observe. For $Y$, ask how much of a geographic difference comes from the probability of recording an event. For $X$, ask how well reported disorder measures the physical conditions residents experience.
+
+### 12. What each evaluation measure tells us
+
+| Measure | Question it answers | Limit of the interpretation |
+|---|---|---|
+| MAE or RMSE | How far are predicted counts from recorded counts? | Accuracy against records leaves underlying victimization unmeasured. |
+| Poisson $e^\beta$ | By what factor does the expected count change for a one-unit increase in a predictor? | A conditional association alone cannot identify a causal effect. |
+| LISA | Where do high-count cells form local High-High clusters? | The cluster designation leaves its cause open. |
+| Top 10% capture | What share of recorded incidents falls in the highest-ranked cells? | Fairness and the effect of intervention need separate evaluation. |
+| Geographic CV (leave-one-group-out) | How well does a model transfer to a whole police district held out from training? | Geographic separation can preserve biases already present in the labels. |
+| Time holdout | How well do past data predict records in a later period? | Unreported incidents remain absent from the evaluation. |
+
+## Proving R Works
+
+~~~{r}
+#| label: poisson-coefficient-example
+# Expected percentage change for a one-mile increase in hotspot distance
+round(100 * (exp(-1.450) - 1), 1)
+~~~
+
+~~~{r}
+#| label: session-info
+sessionInfo()
+~~~
+
+## Reflection
+
+The two-neighborhood example changed how I read a hotspot map. A model could predict 80 records in one area and 30 in another even if both experienced 100 incidents. Before using the map to allocate resources, I would want to know how reporting and patrol practices differ across those areas. For the forecasting question, I would also compare the Poisson model and historical KDE on the same future period.
+
+## Questions I Still Have
+
+None
