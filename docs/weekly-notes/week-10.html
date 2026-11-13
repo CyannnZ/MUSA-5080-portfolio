@@ -1,0 +1,1508 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.10.18">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="dcterms.date" content="2026-11-06">
+<meta name="description" content="Link functions, odds ratios, confusion matrices, classification thresholds, and geographic cross-validation.">
+
+<title>Week 10: GLMs, Logistic Regression, and Classification – Chenyan Zhao - MUSA 5080 Portfolio</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-92404dd89b1444827012a9e3a58cda88.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../index.html">
+    <span class="navbar-title">Portfolio</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../index.html"> 
+<span class="menu-text">Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../about.html"> 
+<span class="menu-text">About</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../weekly-notes/index.html"> 
+<span class="menu-text">Weekly Notes</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../assignments/index.html"> 
+<span class="menu-text">Assignments</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/CyannnZ/MUSA-5080-portfolio"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#what-we-did" id="toc-what-we-did" class="nav-link active" data-scroll-target="#what-we-did">What We Did</a></li>
+  <li><a href="#key-concepts" id="toc-key-concepts" class="nav-link" data-scroll-target="#key-concepts">Key Concepts</a></li>
+  <li><a href="#note" id="toc-note" class="nav-link" data-scroll-target="#note">Note</a>
+  <ul class="collapse">
+  <li><a href="#from-a-glm-score-to-a-prediction" id="toc-from-a-glm-score-to-a-prediction" class="nav-link" data-scroll-target="#from-a-glm-score-to-a-prediction">1. From a GLM score to a prediction</a></li>
+  <li><a href="#predictors-linear-predictor-and-conditional-mean" id="toc-predictors-linear-predictor-and-conditional-mean" class="nav-link" data-scroll-target="#predictors-linear-predictor-and-conditional-mean">2. Predictors, linear predictor, and conditional mean</a></li>
+  <li><a href="#same-linear-predictor-different-outcome-scales" id="toc-same-linear-predictor-different-outcome-scales" class="nav-link" data-scroll-target="#same-linear-predictor-different-outcome-scales">3. Same linear predictor, different outcome scales</a></li>
+  <li><a href="#glms-and-prediction-scales-in-r" id="toc-glms-and-prediction-scales-in-r" class="nav-link" data-scroll-target="#glms-and-prediction-scales-in-r">4. GLMs and prediction scales in R</a></li>
+  <li><a href="#logistic-regression-and-the-sigmoid" id="toc-logistic-regression-and-the-sigmoid" class="nav-link" data-scroll-target="#logistic-regression-and-the-sigmoid">5. Logistic regression and the sigmoid</a></li>
+  <li><a href="#probability-odds-and-log-odds" id="toc-probability-odds-and-log-odds" class="nav-link" data-scroll-target="#probability-odds-and-log-odds">6. Probability, odds, and log-odds</a></li>
+  <li><a href="#confusion-matrix-and-classification-metrics" id="toc-confusion-matrix-and-classification-metrics" class="nav-link" data-scroll-target="#confusion-matrix-and-classification-metrics">7. Confusion matrix and classification metrics</a></li>
+  <li><a href="#geographic-cross-validation" id="toc-geographic-cross-validation" class="nav-link" data-scroll-target="#geographic-cross-validation">8. Geographic cross-validation</a></li>
+  <li><a href="#interpreting-logistic-coefficients-with-odds-ratios" id="toc-interpreting-logistic-coefficients-with-odds-ratios" class="nav-link" data-scroll-target="#interpreting-logistic-coefficients-with-odds-ratios">9. Interpreting logistic coefficients with odds ratios</a></li>
+  <li><a href="#classification-thresholds" id="toc-classification-thresholds" class="nav-link" data-scroll-target="#classification-thresholds">10. Classification thresholds</a></li>
+  <li><a href="#accuracy-and-class-imbalance" id="toc-accuracy-and-class-imbalance" class="nav-link" data-scroll-target="#accuracy-and-class-imbalance">11. Accuracy and class imbalance</a></li>
+  <li><a href="#the-identity-link" id="toc-the-identity-link" class="nav-link" data-scroll-target="#the-identity-link">12. The identity link</a></li>
+  <li><a href="#fitting-and-testing-a-logistic-model-in-r" id="toc-fitting-and-testing-a-logistic-model-in-r" class="nav-link" data-scroll-target="#fitting-and-testing-a-logistic-model-in-r">13. Fitting and testing a logistic model in R</a></li>
+  </ul></li>
+  <li><a href="#proving-r-works" id="toc-proving-r-works" class="nav-link" data-scroll-target="#proving-r-works">Proving R Works</a></li>
+  <li><a href="#reflection" id="toc-reflection" class="nav-link" data-scroll-target="#reflection">Reflection</a></li>
+  <li><a href="#questions-i-still-have" id="toc-questions-i-still-have" class="nav-link" data-scroll-target="#questions-i-still-have">Questions I Still Have</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<div class="quarto-title-block"><div><h1 class="title">Week 10: GLMs, Logistic Regression, and Classification</h1><button type="button" class="btn code-tools-button" id="quarto-code-tools-source"><i class="bi"></i> Code</button></div></div>
+</div>
+
+<div>
+  <div class="description">
+    Link functions, odds ratios, confusion matrices, classification thresholds, and geographic cross-validation.
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">November 6, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="what-we-did" class="level2">
+<h2 class="anchored" data-anchor-id="what-we-did">What We Did</h2>
+<p>We compared how linear, Poisson, and logistic regression turn a linear predictor into an expected outcome. We worked through probability, odds, and log-odds, then used a confusion matrix to see how classification thresholds affect model evaluation. We also compared random and geographic cross-validation.</p>
+</section>
+<section id="key-concepts" class="level2">
+<h2 class="anchored" data-anchor-id="key-concepts">Key Concepts</h2>
+<ul>
+<li>A generalized linear model (GLM) links the conditional mean <span class="math inline">\(\mu=E[Y\mid X]\)</span> to the linear predictor <span class="math inline">\(\eta=X\beta\)</span>.</li>
+<li>Logistic regression uses the logit link and the sigmoid inverse link. The model estimates a probability, and a decision threshold turns that probability into a class.</li>
+<li>Exponentiating a logistic coefficient gives a multiplier for the odds of the outcome, holding other predictors fixed.</li>
+<li>Sensitivity, specificity, and precision use different denominators. Class imbalance can make accuracy look high even when sensitivity is zero.</li>
+<li>The validation split should reflect where the model will be used. Geographic cross-validation holds out entire areas.</li>
+</ul>
+</section>
+<section id="note" class="level2">
+<h2 class="anchored" data-anchor-id="note">Note</h2>
+<section id="from-a-glm-score-to-a-prediction" class="level3">
+<h3 class="anchored" data-anchor-id="from-a-glm-score-to-a-prediction">1. From a GLM score to a prediction</h3>
+<p>Suppose a logistic model predicts whether someone has a disease. The outcome <span class="math inline">\(Y\)</span> is binary, and the model predicts the probability <span class="math inline">\(p\)</span> of <span class="math inline">\(Y=1\)</span>. Age, exposure to a hazard, and genetic information are possible predictors. A simplified teaching model uses age and exposure:</p>
+<p><span class="math display">\[
+\eta=-3+0.05(\text{Age})+0.8(\text{Exposure}).
+\]</span></p>
+<p>For age 40 and exposure 2, the linear predictor is <span class="math inline">\(\eta=-3+0.05(40)+0.8(2)=0.6\)</span>. The score can take any real value. To obtain a probability, apply the sigmoid:</p>
+<p><span class="math display">\[
+p=\frac{1}{1+e^{-\eta}}
+=\frac{1}{1+e^{-0.6}}\approx 0.646.
+\]</span></p>
+<p>The model’s predicted probability is about <strong>64.6%</strong>. The coefficients and inputs are teaching values.</p>
+<p>The <strong>link function</strong> <span class="math inline">\(g\)</span> maps the conditional mean to the linear-predictor scale. For logistic regression, the link is the logit:</p>
+<p><span class="math display">\[
+g(p)=\log\left(\frac{p}{1-p}\right).
+\]</span></p>
+<p>Substituting <span class="math inline">\(p\approx0.646\)</span> gives <span class="math inline">\(g(p)\approx0.6\)</span>. The <strong>inverse link</strong> <span class="math inline">\(g^{-1}\)</span> maps the linear predictor back to the outcome scale. The link acts on the conditional mean of <span class="math inline">\(Y\)</span>. It does not recover the predictors from an observed outcome.</p>
+</section>
+<section id="predictors-linear-predictor-and-conditional-mean" class="level3">
+<h3 class="anchored" data-anchor-id="predictors-linear-predictor-and-conditional-mean">2. Predictors, linear predictor, and conditional mean</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Symbol</th>
+<th>Meaning</th>
+<th>In the disease example</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><span class="math inline">\(X\)</span></td>
+<td>Known predictor values</td>
+<td>Age 40 and exposure 2</td>
+</tr>
+<tr class="even">
+<td><span class="math inline">\(\eta\)</span></td>
+<td>Linear predictor calculated from the inputs and fitted coefficients</td>
+<td><span class="math inline">\(0.6\)</span></td>
+</tr>
+<tr class="odd">
+<td><span class="math inline">\(\mu\)</span></td>
+<td>Expected outcome given the inputs, <span class="math inline">\(E[Y\mid X]\)</span></td>
+<td><span class="math inline">\(p\approx0.646\)</span></td>
+</tr>
+</tbody>
+</table>
+<p>The model is written as <span class="math inline">\(g(\mu)=\eta=X\beta\)</span>, where <span class="math inline">\(X\)</span> includes the intercept term. At prediction time, calculate <span class="math inline">\(\eta\)</span> from <span class="math inline">\(X\)</span>, then use <span class="math inline">\(\mu=g^{-1}(\eta)\)</span>. For a binary outcome, <span class="math inline">\(\mu=p\)</span>. For a Poisson count, <span class="math inline">\(\mu=\lambda\)</span> is an expected count. For ordinary linear regression, <span class="math inline">\(\mu\)</span> is the predicted mean in the original outcome units.</p>
+</section>
+<section id="same-linear-predictor-different-outcome-scales" class="level3">
+<h3 class="anchored" data-anchor-id="same-linear-predictor-different-outcome-scales">3. Same linear predictor, different outcome scales</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Model</th>
+<th>Outcome</th>
+<th>Link <span class="math inline">\(g(\mu)\)</span></th>
+<th>Inverse link</th>
+<th>Prediction when <span class="math inline">\(\eta=2\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Logistic</td>
+<td>Binary event</td>
+<td><span class="math inline">\(\log[p/(1-p)]\)</span></td>
+<td><span class="math inline">\(p=1/(1+e^{-\eta})\)</span></td>
+<td>Probability <span class="math inline">\(\approx0.881\)</span></td>
+</tr>
+<tr class="even">
+<td>Poisson</td>
+<td>Event count</td>
+<td><span class="math inline">\(\log(\mu)\)</span></td>
+<td><span class="math inline">\(\mu=e^\eta\)</span></td>
+<td>Expected count <span class="math inline">\(\approx7.39\)</span></td>
+</tr>
+<tr class="odd">
+<td>Linear</td>
+<td>Continuous outcome</td>
+<td><span class="math inline">\(\mu\)</span></td>
+<td><span class="math inline">\(\mu=\eta\)</span></td>
+<td>Expected value <span class="math inline">\(2\)</span> in the original units</td>
+</tr>
+</tbody>
+</table>
+<p>The logistic inverse link keeps predictions strictly between zero and one for finite scores. The Poisson inverse link gives a positive expected count, which can be fractional even when the observed counts are whole numbers. The linear model uses the identity transformation.</p>
+</section>
+<section id="glms-and-prediction-scales-in-r" class="level3">
+<h3 class="anchored" data-anchor-id="glms-and-prediction-scales-in-r">4. GLMs and prediction scales in R</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>m_logistic <span class="ot">&lt;-</span> <span class="fu">glm</span>(</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  disease <span class="sc">~</span> genetics <span class="sc">+</span> exposure <span class="sc">+</span> age,</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">family =</span> <span class="fu">binomial</span>(<span class="at">link =</span> <span class="st">"logit"</span>),</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> df</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>m_poisson <span class="ot">&lt;-</span> <span class="fu">glm</span>(</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  events <span class="sc">~</span> exposure <span class="sc">+</span> age,</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">family =</span> <span class="fu">poisson</span>(<span class="at">link =</span> <span class="st">"log"</span>),</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> df</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="fu">predict</span>(m_logistic, <span class="at">type =</span> <span class="st">"response"</span>)  <span class="co"># Probabilities</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="fu">predict</span>(m_poisson, <span class="at">type =</span> <span class="st">"response"</span>)   <span class="co"># Expected counts</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="fu">predict</span>(m_logistic, <span class="at">type =</span> <span class="st">"link"</span>)      <span class="co"># Log-odds</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="fu">predict</span>(m_poisson, <span class="at">type =</span> <span class="st">"link"</span>)       <span class="co"># Log expected counts</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Use <code>type = "response"</code> for probabilities or expected counts. Use <code>type = "link"</code> for the linear predictor <span class="math inline">\(\eta\)</span>.</p>
+</section>
+<section id="logistic-regression-and-the-sigmoid" class="level3">
+<h3 class="anchored" data-anchor-id="logistic-regression-and-the-sigmoid">5. Logistic regression and the sigmoid</h3>
+<p>The logistic regression equation models log-odds as a linear function of the predictors. The whiteboard uses <span class="math inline">\(z\)</span> for the same linear predictor denoted by <span class="math inline">\(\eta\)</span> above:</p>
+<p><span class="math display">\[
+z=\log\left(\frac{p}{1-p}\right)
+=\beta_0+\beta_1\text{Genetics}+\beta_2\text{Exposure}+\beta_3\text{Age}.
+\]</span></p>
+<p>Both expressions for the inverse logit give the same probability:</p>
+<p><span class="math display">\[
+p=\frac{e^z}{1+e^z}=\frac{1}{1+e^{-z}}.
+\]</span></p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th style="text-align: right;"><span class="math inline">\(z\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(p\)</span> (approximate)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;"><span class="math inline">\(-2\)</span></td>
+<td style="text-align: right;">0.119</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;"><span class="math inline">\(-1\)</span></td>
+<td style="text-align: right;">0.269</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;"><span class="math inline">\(0\)</span></td>
+<td style="text-align: right;">0.500</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;"><span class="math inline">\(1\)</span></td>
+<td style="text-align: right;">0.731</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;"><span class="math inline">\(2\)</span></td>
+<td style="text-align: right;">0.881</td>
+</tr>
+</tbody>
+</table>
+<p>The sigmoid is increasing and equals <span class="math inline">\(0.5\)</span> at <span class="math inline">\(z=0\)</span>. Positive log-odds therefore correspond to <span class="math inline">\(p&gt;0.5\)</span>, and negative log-odds correspond to <span class="math inline">\(p&lt;0.5\)</span>. The threshold for a classification decision depends on the application.</p>
+<p>In a second teaching calculation, <span class="math inline">\(z=-1+0.8(\text{Exposure})+0.03(\text{Age})\)</span>. With exposure 2 and age 40, <span class="math inline">\(z=-1+1.6+1.2=1.8\)</span>, and the predicted probability is about <strong>85.8%</strong>.</p>
+</section>
+<section id="probability-odds-and-log-odds" class="level3">
+<h3 class="anchored" data-anchor-id="probability-odds-and-log-odds">6. Probability, odds, and log-odds</h3>
+<p>Odds compare the probability of an event with the probability of its absence. Starting with <span class="math inline">\(O=p/(1-p)\)</span> gives <span class="math inline">\(O(1-p)=p\)</span> and thus <span class="math inline">\(p=O/(1+O)\)</span>.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th style="text-align: right;">Probability <span class="math inline">\(p\)</span></th>
+<th style="text-align: right;">Odds <span class="math inline">\(p/(1-p)\)</span></th>
+<th style="text-align: right;">Log-odds <span class="math inline">\(\log(O)\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0.200</td>
+<td style="text-align: right;">0.250</td>
+<td style="text-align: right;"><span class="math inline">\(-1.386\)</span></td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">0.500</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;"><span class="math inline">\(0\)</span></td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">0.800</td>
+<td style="text-align: right;">4.000</td>
+<td style="text-align: right;"><span class="math inline">\(1.386\)</span></td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">0.455</td>
+<td style="text-align: right;">0.835</td>
+<td style="text-align: right;"><span class="math inline">\(-0.180\)</span></td>
+</tr>
+</tbody>
+</table>
+<p>At <span class="math inline">\(p=0.80\)</span>, the odds are <span class="math inline">\(4:1\)</span>. At <span class="math inline">\(p=0.50\)</span>, the odds are <span class="math inline">\(1:1\)</span>. In the whiteboard rearrest example, <span class="math inline">\(p\approx0.455\)</span> gives odds of about <span class="math inline">\(0.835\)</span>, or about 84 rearrests for every 100 people who are not rearrested in a hypothetical group with that proportion. Converting those odds back gives <span class="math inline">\(0.835/(1+0.835)\approx0.455\)</span>.</p>
+</section>
+<section id="confusion-matrix-and-classification-metrics" class="level3">
+<h3 class="anchored" data-anchor-id="confusion-matrix-and-classification-metrics">7. Confusion matrix and classification metrics</h3>
+<p>After applying a threshold to the model probabilities, compare the predicted labels with the observed labels. The matrix below uses predicted labels as rows and actual labels as columns.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th>Actual positive</th>
+<th>Actual negative</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Predicted positive</td>
+<td>True positive (TP), correctly detected</td>
+<td>False positive (FP), false alarm</td>
+</tr>
+<tr class="even">
+<td>Predicted negative</td>
+<td>False negative (FN), missed positive</td>
+<td>True negative (TN), correctly ruled out</td>
+</tr>
+</tbody>
+</table>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Metric</th>
+<th>Formula</th>
+<th>Question it answers</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Sensitivity, recall, or true positive rate (TPR)</td>
+<td><span class="math inline">\(TP/(TP+FN)\)</span></td>
+<td>What fraction of actual positives did we detect?</td>
+</tr>
+<tr class="even">
+<td>Specificity or true negative rate (TNR)</td>
+<td><span class="math inline">\(TN/(TN+FP)\)</span></td>
+<td>What fraction of actual negatives did we correctly rule out?</td>
+</tr>
+<tr class="odd">
+<td>Precision or positive predictive value (PPV)</td>
+<td><span class="math inline">\(TP/(TP+FP)\)</span></td>
+<td>What fraction of predicted positives were actually positive?</td>
+</tr>
+</tbody>
+</table>
+<p>Sensitivity and precision both have <span class="math inline">\(TP\)</span> in the numerator. Sensitivity divides by actual positives, while precision divides by predicted positives. Sensitivity is especially relevant when missed positives are costly. Specificity describes how often actual negatives are correctly excluded, and precision describes the reliability of positive predictions.</p>
+<p>For a teaching example with 300 screening observations:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th></th>
+<th style="text-align: right;">Actual positive</th>
+<th style="text-align: right;">Actual negative</th>
+<th style="text-align: right;">Total</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Predicted positive</td>
+<td style="text-align: right;">90</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">100</td>
+</tr>
+<tr class="even">
+<td>Predicted negative</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">190</td>
+<td style="text-align: right;">200</td>
+</tr>
+<tr class="odd">
+<td>Total</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">200</td>
+<td style="text-align: right;">300</td>
+</tr>
+</tbody>
+</table>
+<p>Sensitivity is <span class="math inline">\(90/100=90\%\)</span>, specificity is <span class="math inline">\(190/200=95\%\)</span>, and precision is <span class="math inline">\(90/100=90\%\)</span>. The sensitivity and precision denominators happen to be equal here because the number of actual positives equals the number of predicted positives. In a separate example with 80 true positives and 20 false positives, precision is <span class="math inline">\(80/(80+20)=80\%\)</span>.</p>
+</section>
+<section id="geographic-cross-validation" class="level3">
+<h3 class="anchored" data-anchor-id="geographic-cross-validation">8. Geographic cross-validation</h3>
+<p>Random <span class="math inline">\(k\)</span>-fold cross-validation splits individual observations. When nearby observations appear in both training and validation, it estimates performance on other observations in familiar areas. Geographic cross-validation holds out entire geographic groups to evaluate transfer to unseen regions.</p>
+<p>With leave-one-group-out (LOGO) cross-validation, each district serves as the validation set once:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th style="text-align: right;">Fold</th>
+<th>Training districts</th>
+<th>Held-out district</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">1</td>
+<td>B, C, D</td>
+<td>A</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2</td>
+<td>A, C, D</td>
+<td>B</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">3</td>
+<td>A, B, D</td>
+<td>C</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">4</td>
+<td>A, B, C</td>
+<td>D</td>
+</tr>
+</tbody>
+</table>
+<p>Fit the model anew for each fold, predict the held-out district, and summarize the results using a measure appropriate to the outcome, such as MAE, RMSE, or classification metrics. Choose the split based on the intended deployment. Nearby observations can still be spatially dependent across group boundaries.</p>
+</section>
+<section id="interpreting-logistic-coefficients-with-odds-ratios" class="level3">
+<h3 class="anchored" data-anchor-id="interpreting-logistic-coefficients-with-odds-ratios">9. Interpreting logistic coefficients with odds ratios</h3>
+<p>For a predictor that enters linearly and has no interaction term, a one-unit increase adds <span class="math inline">\(\beta\)</span> to the log-odds and multiplies the odds by <span class="math inline">\(OR=e^\beta\)</span>, holding other variables fixed.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th style="text-align: right;"><span class="math inline">\(\beta\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(OR\)</span></th>
+<th>Change in odds</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;"><span class="math inline">\(0\)</span></td>
+<td style="text-align: right;"><span class="math inline">\(1\)</span></td>
+<td>Unchanged</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;"><span class="math inline">\(0.693\)</span></td>
+<td style="text-align: right;"><span class="math inline">\(\approx2\)</span></td>
+<td>Double</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;"><span class="math inline">\(-0.693\)</span></td>
+<td style="text-align: right;"><span class="math inline">\(\approx0.5\)</span></td>
+<td>Halve</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;"><span class="math inline">\(0.20\)</span></td>
+<td style="text-align: right;"><span class="math inline">\(\approx1.221\)</span></td>
+<td>Increase by about 22.1%</td>
+</tr>
+</tbody>
+</table>
+<p>The probability change depends on the starting probability. If <span class="math inline">\(p=0.20\)</span>, the initial odds are <span class="math inline">\(0.25\)</span>. Doubling them yields <span class="math inline">\(0.50\)</span>, which corresponds to <span class="math inline">\(0.50/(1+0.50)\approx0.333\)</span>, or <strong>33.3%</strong>. Starting from <span class="math inline">\(p=0.05\)</span>, the same odds ratio of 2 gives a probability of about <strong>9.52%</strong>.</p>
+</section>
+<section id="classification-thresholds" class="level3">
+<h3 class="anchored" data-anchor-id="classification-thresholds">10. Classification thresholds</h3>
+<p>A threshold <span class="math inline">\(t\)</span> assigns a predicted class of 1 to observations with <span class="math inline">\(\hat p\ge t\)</span> and 0 to those with <span class="math inline">\(\hat p&lt;t\)</span>. Consider five teaching observations:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Observation</th>
+<th style="text-align: right;">Predicted probability</th>
+<th style="text-align: right;">Actual class</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>A</td>
+<td style="text-align: right;">0.90</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr class="even">
+<td>B</td>
+<td style="text-align: right;">0.70</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr class="odd">
+<td>C</td>
+<td style="text-align: right;">0.45</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr class="even">
+<td>D</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="odd">
+<td>E</td>
+<td style="text-align: right;">0.10</td>
+<td style="text-align: right;">0</td>
+</tr>
+</tbody>
+</table>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 11%">
+<col style="width: 8%">
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 11%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: right;">Threshold</th>
+<th>Predicted positives</th>
+<th style="text-align: right;">TP</th>
+<th style="text-align: right;">FN</th>
+<th style="text-align: right;">FP</th>
+<th style="text-align: right;">TN</th>
+<th style="text-align: right;">Sensitivity</th>
+<th style="text-align: right;">Specificity</th>
+<th style="text-align: right;">Precision</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0.50</td>
+<td>A, B</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">66.7%</td>
+<td style="text-align: right;">100%</td>
+<td style="text-align: right;">100%</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">0.30</td>
+<td>A, B, C, D</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">100%</td>
+<td style="text-align: right;">50%</td>
+<td style="text-align: right;">75%</td>
+</tr>
+</tbody>
+</table>
+<p>For fixed predictions and labels, lowering the threshold can only expand the set of predicted positives. Sensitivity can rise or stay the same, and specificity can fall or stay the same. Raising the threshold reverses these directions. Precision can move either way depending on which observations enter or leave the predicted-positive set. A threshold of <span class="math inline">\(0.50\)</span> is a common starting point. The relative costs of false positives and false negatives should guide the decision.</p>
+</section>
+<section id="accuracy-and-class-imbalance" class="level3">
+<h3 class="anchored" data-anchor-id="accuracy-and-class-imbalance">11. Accuracy and class imbalance</h3>
+<p><span class="math display">\[
+\text{Accuracy}=\frac{TP+TN}{TP+TN+FP+FN}.
+\]</span></p>
+<p>Suppose 10 out of 1,000 people have a disease. A classifier that predicts everyone as negative gets 990 out of 1,000 predictions correct and has <strong>99% accuracy</strong>. Its sensitivity is <strong>0%</strong> because it misses all 10 actual positives. Under class imbalance, examine the confusion matrix and the metrics that reflect the costs of the relevant errors.</p>
+</section>
+<section id="the-identity-link" class="level3">
+<h3 class="anchored" data-anchor-id="the-identity-link">12. The identity link</h3>
+<p>An identity link leaves the conditional mean on its original scale. For ordinary linear regression,</p>
+<p><span class="math display">\[
+g(\mu)=\mu,\qquad
+E[Y\mid X]=\eta=\beta_0+\beta_1X_1+\cdots.
+\]</span></p>
+<p>The log and logit links use transformed mean scales, so predictions for Poisson and logistic regression need the corresponding inverse links.</p>
+</section>
+<section id="fitting-and-testing-a-logistic-model-in-r" class="level3">
+<h3 class="anchored" data-anchor-id="fitting-and-testing-a-logistic-model-in-r">13. Fitting and testing a logistic model in R</h3>
+<p>The following workflow uses illustrative data frames and column names. The model is fitted on the training set. Predicted probabilities for the separate test set are then converted to labels using the chosen threshold.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">glm</span>(</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  outcome <span class="sc">~</span> x1 <span class="sc">+</span> x2,</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">family =</span> <span class="fu">binomial</span>(<span class="at">link =</span> <span class="st">"logit"</span>),</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> train</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="fu">exp</span>(<span class="fu">coef</span>(model))</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>p <span class="ot">&lt;-</span> <span class="fu">predict</span>(model, <span class="at">newdata =</span> test, <span class="at">type =</span> <span class="st">"response"</span>)</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>predicted_class <span class="ot">&lt;-</span> <span class="fu">as.integer</span>(p <span class="sc">&gt;=</span> <span class="fl">0.50</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The exponentiated intercept gives the baseline odds when the predictors are zero. The exponentiated slope coefficients are odds ratios for one-unit changes in their respective predictors in this additive model.</p>
+</section>
+</section>
+<section id="proving-r-works" class="level2">
+<h2 class="anchored" data-anchor-id="proving-r-works">Proving R Works</h2>
+<p><sub></sub>~{r} #| label: logistic-worked-example</p>
+<p>eta &lt;- -3 + 0.05 * 40 + 0.8 * 2 p &lt;- plogis(eta)</p>
+<p>round(c(linear_predictor = eta, probability = p, log_odds = qlogis(p)), 3) <sub></sub>~</p>
+<p><sub></sub>~{r} #| label: session-info</p>
+<p>sessionInfo() <sub></sub>~</p>
+</section>
+<section id="reflection" class="level2">
+<h2 class="anchored" data-anchor-id="reflection">Reflection</h2>
+<p>The threshold example shows how the same model can catch more actual positives while creating more false alarms. I would decide which error matters most before choosing a cutoff. I would also choose geographic holdouts if the model is intended for a district that supplied no training data.</p>
+</section>
+<section id="questions-i-still-have" class="level2">
+<h2 class="anchored" data-anchor-id="questions-i-still-have">Questions I Still Have</h2>
+<p>None</p>
+
+
+<!-- -->
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+    const viewSource = window.document.getElementById('quarto-view-source') ||
+                       window.document.getElementById('quarto-code-tools-source');
+    if (viewSource) {
+      const sourceUrl = viewSource.getAttribute("data-quarto-source-url");
+      viewSource.addEventListener("click", function(e) {
+        if (sourceUrl) {
+          // rstudio viewer pane
+          if (/\bcapabilities=\b/.test(window.location)) {
+            window.open(sourceUrl);
+          } else {
+            window.location.href = sourceUrl;
+          }
+        } else {
+          const modal = new bootstrap.Modal(document.getElementById('quarto-embedded-source-code-modal'));
+          modal.show();
+        }
+        return false;
+      });
+    }
+    function toggleCodeHandler(show) {
+      return function(e) {
+        const cellDetails = window.document.querySelectorAll(".cell details.code-fold");
+        for (let i=0; i<cellDetails.length; i++) {
+          const details = cellDetails[i];
+          if (show) {
+            details.open = true;
+          } else {
+            details.removeAttribute("open");
+          }
+        }
+        const cellCodeDivs = window.document.querySelectorAll(".cell div.sourceCode.cell-code");
+        const fromCls = show ? "hidden" : "unhidden";
+        const toCls = show ? "unhidden" : "hidden";
+        for (let i=0; i<cellCodeDivs.length; i++) {
+          const codeDiv = cellCodeDivs[i];
+          if (codeDiv.classList.contains(fromCls)) {
+            codeDiv.classList.remove(fromCls);
+            codeDiv.classList.add(toCls);
+          } 
+        }
+        return false;
+      }
+    }
+    const hideAllCode = window.document.getElementById("quarto-hide-all-code");
+    if (hideAllCode) {
+      hideAllCode.addEventListener("click", toggleCodeHandler(false));
+    }
+    const showAllCode = window.document.getElementById("quarto-show-all-code");
+    if (showAllCode) {
+      showAllCode.addEventListener("click", toggleCodeHandler(true));
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script><div class="modal fade" id="quarto-embedded-source-code-modal" tabindex="-1" aria-labelledby="quarto-embedded-source-code-modal-label" aria-hidden="true"><div class="modal-dialog modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="quarto-embedded-source-code-modal-label">Source Code</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3" data-shortcodes="false"><pre class="sourceCode markdown code-with-copy"><code class="sourceCode markdown"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="an">title:</span><span class="co"> "Week 10: GLMs, Logistic Regression, and Classification"</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="an">description:</span><span class="co"> "Link functions, odds ratios, confusion matrices, classification thresholds, and geographic cross-validation."</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="an">date:</span><span class="co"> 2026-11-06</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="fu">## What We Did</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>We compared how linear, Poisson, and logistic regression turn a linear predictor into an expected outcome. We worked through probability, odds, and log-odds, then used a confusion matrix to see how classification thresholds affect model evaluation. We also compared random and geographic cross-validation.</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="fu">## Key Concepts</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>A generalized linear model (GLM) links the conditional mean $\mu=E<span class="co">[</span><span class="ot">Y\mid X</span><span class="co">]</span>$ to the linear predictor $\eta=X\beta$.</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Logistic regression uses the logit link and the sigmoid inverse link. The model estimates a probability, and a decision threshold turns that probability into a class.</span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Exponentiating a logistic coefficient gives a multiplier for the odds of the outcome, holding other predictors fixed.</span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Sensitivity, specificity, and precision use different denominators. Class imbalance can make accuracy look high even when sensitivity is zero.</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>The validation split should reflect where the model will be used. Geographic cross-validation holds out entire areas.</span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a><span class="fu">## Note</span></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a><span class="fu">### 1. From a GLM score to a prediction</span></span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>Suppose a logistic model predicts whether someone has a disease. The outcome $Y$ is binary, and the model predicts the probability $p$ of $Y=1$. Age, exposure to a hazard, and genetic information are possible predictors. A simplified teaching model uses age and exposure:</span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>\eta=-3+0.05(\text{Age})+0.8(\text{Exposure}).</span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a>For age 40 and exposure 2, the linear predictor is $\eta=-3+0.05(40)+0.8(2)=0.6$. The score can take any real value. To obtain a probability, apply the sigmoid:</span>
+<span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb3-32"><a href="#cb3-32" aria-hidden="true" tabindex="-1"></a>p=\frac{1}{1+e^{-\eta}}</span>
+<span id="cb3-33"><a href="#cb3-33" aria-hidden="true" tabindex="-1"></a>=\frac{1}{1+e^{-0.6}}\approx 0.646.</span>
+<span id="cb3-34"><a href="#cb3-34" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb3-35"><a href="#cb3-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-36"><a href="#cb3-36" aria-hidden="true" tabindex="-1"></a>The model's predicted probability is about **64.6%**. The coefficients and inputs are teaching values.</span>
+<span id="cb3-37"><a href="#cb3-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-38"><a href="#cb3-38" aria-hidden="true" tabindex="-1"></a>The **link function** $g$ maps the conditional mean to the linear-predictor scale. For logistic regression, the link is the logit:</span>
+<span id="cb3-39"><a href="#cb3-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-40"><a href="#cb3-40" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb3-41"><a href="#cb3-41" aria-hidden="true" tabindex="-1"></a>g(p)=\log\left(\frac{p}{1-p}\right).</span>
+<span id="cb3-42"><a href="#cb3-42" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb3-43"><a href="#cb3-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-44"><a href="#cb3-44" aria-hidden="true" tabindex="-1"></a>Substituting $p\approx0.646$ gives $g(p)\approx0.6$. The **inverse link** $g^{-1}$ maps the linear predictor back to the outcome scale. The link acts on the conditional mean of $Y$. It does not recover the predictors from an observed outcome.</span>
+<span id="cb3-45"><a href="#cb3-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-46"><a href="#cb3-46" aria-hidden="true" tabindex="-1"></a><span class="fu">### 2. Predictors, linear predictor, and conditional mean</span></span>
+<span id="cb3-47"><a href="#cb3-47" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-48"><a href="#cb3-48" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Symbol <span class="pp">|</span> Meaning <span class="pp">|</span> In the disease example <span class="pp">|</span></span>
+<span id="cb3-49"><a href="#cb3-49" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|---|</span></span>
+<span id="cb3-50"><a href="#cb3-50" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> $X$ <span class="pp">|</span> Known predictor values <span class="pp">|</span> Age 40 and exposure 2 <span class="pp">|</span></span>
+<span id="cb3-51"><a href="#cb3-51" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> $\eta$ <span class="pp">|</span> Linear predictor calculated from the inputs and fitted coefficients <span class="pp">|</span> $0.6$ <span class="pp">|</span></span>
+<span id="cb3-52"><a href="#cb3-52" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> $\mu$ <span class="pp">|</span> Expected outcome given the inputs, $E<span class="co">[</span><span class="ot">Y\mid X</span><span class="co">]</span>$ <span class="pp">|</span> $p\approx0.646$ <span class="pp">|</span></span>
+<span id="cb3-53"><a href="#cb3-53" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-54"><a href="#cb3-54" aria-hidden="true" tabindex="-1"></a>The model is written as $g(\mu)=\eta=X\beta$, where $X$ includes the intercept term. At prediction time, calculate $\eta$ from $X$, then use $\mu=g^{-1}(\eta)$. For a binary outcome, $\mu=p$. For a Poisson count, $\mu=\lambda$ is an expected count. For ordinary linear regression, $\mu$ is the predicted mean in the original outcome units.</span>
+<span id="cb3-55"><a href="#cb3-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-56"><a href="#cb3-56" aria-hidden="true" tabindex="-1"></a><span class="fu">### 3. Same linear predictor, different outcome scales</span></span>
+<span id="cb3-57"><a href="#cb3-57" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-58"><a href="#cb3-58" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Model <span class="pp">|</span> Outcome <span class="pp">|</span> Link $g(\mu)$ <span class="pp">|</span> Inverse link <span class="pp">|</span> Prediction when $\eta=2$ <span class="pp">|</span></span>
+<span id="cb3-59"><a href="#cb3-59" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|---|---|---|</span></span>
+<span id="cb3-60"><a href="#cb3-60" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Logistic <span class="pp">|</span> Binary event <span class="pp">|</span> $\log<span class="co">[</span><span class="ot">p/(1-p)</span><span class="co">]</span>$ <span class="pp">|</span> $p=1/(1+e^{-\eta})$ <span class="pp">|</span> Probability $\approx0.881$ <span class="pp">|</span></span>
+<span id="cb3-61"><a href="#cb3-61" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Poisson <span class="pp">|</span> Event count <span class="pp">|</span> $\log(\mu)$ <span class="pp">|</span> $\mu=e^\eta$ <span class="pp">|</span> Expected count $\approx7.39$ <span class="pp">|</span></span>
+<span id="cb3-62"><a href="#cb3-62" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Linear <span class="pp">|</span> Continuous outcome <span class="pp">|</span> $\mu$ <span class="pp">|</span> $\mu=\eta$ <span class="pp">|</span> Expected value $2$ in the original units <span class="pp">|</span></span>
+<span id="cb3-63"><a href="#cb3-63" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-64"><a href="#cb3-64" aria-hidden="true" tabindex="-1"></a>The logistic inverse link keeps predictions strictly between zero and one for finite scores. The Poisson inverse link gives a positive expected count, which can be fractional even when the observed counts are whole numbers. The linear model uses the identity transformation.</span>
+<span id="cb3-65"><a href="#cb3-65" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-66"><a href="#cb3-66" aria-hidden="true" tabindex="-1"></a><span class="fu">### 4. GLMs and prediction scales in R</span></span>
+<span id="cb3-67"><a href="#cb3-67" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-68"><a href="#cb3-68" aria-hidden="true" tabindex="-1"></a><span class="in">~~~r</span></span>
+<span id="cb3-69"><a href="#cb3-69" aria-hidden="true" tabindex="-1"></a>m_logistic <span class="ot">&lt;-</span> <span class="fu">glm</span>(</span>
+<span id="cb3-70"><a href="#cb3-70" aria-hidden="true" tabindex="-1"></a>  disease <span class="sc">~</span> genetics <span class="sc">+</span> exposure <span class="sc">+</span> age,</span>
+<span id="cb3-71"><a href="#cb3-71" aria-hidden="true" tabindex="-1"></a>  <span class="at">family =</span> <span class="fu">binomial</span>(<span class="at">link =</span> <span class="st">"logit"</span>),</span>
+<span id="cb3-72"><a href="#cb3-72" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> df</span>
+<span id="cb3-73"><a href="#cb3-73" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-74"><a href="#cb3-74" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-75"><a href="#cb3-75" aria-hidden="true" tabindex="-1"></a>m_poisson <span class="ot">&lt;-</span> <span class="fu">glm</span>(</span>
+<span id="cb3-76"><a href="#cb3-76" aria-hidden="true" tabindex="-1"></a>  events <span class="sc">~</span> exposure <span class="sc">+</span> age,</span>
+<span id="cb3-77"><a href="#cb3-77" aria-hidden="true" tabindex="-1"></a>  <span class="at">family =</span> <span class="fu">poisson</span>(<span class="at">link =</span> <span class="st">"log"</span>),</span>
+<span id="cb3-78"><a href="#cb3-78" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> df</span>
+<span id="cb3-79"><a href="#cb3-79" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-80"><a href="#cb3-80" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-81"><a href="#cb3-81" aria-hidden="true" tabindex="-1"></a><span class="fu">predict</span>(m_logistic, <span class="at">type =</span> <span class="st">"response"</span>)  <span class="co"># Probabilities</span></span>
+<span id="cb3-82"><a href="#cb3-82" aria-hidden="true" tabindex="-1"></a><span class="fu">predict</span>(m_poisson, <span class="at">type =</span> <span class="st">"response"</span>)   <span class="co"># Expected counts</span></span>
+<span id="cb3-83"><a href="#cb3-83" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-84"><a href="#cb3-84" aria-hidden="true" tabindex="-1"></a><span class="fu">predict</span>(m_logistic, <span class="at">type =</span> <span class="st">"link"</span>)      <span class="co"># Log-odds</span></span>
+<span id="cb3-85"><a href="#cb3-85" aria-hidden="true" tabindex="-1"></a><span class="fu">predict</span>(m_poisson, <span class="at">type =</span> <span class="st">"link"</span>)       <span class="co"># Log expected counts</span></span>
+<span id="cb3-86"><a href="#cb3-86" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb3-87"><a href="#cb3-87" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-88"><a href="#cb3-88" aria-hidden="true" tabindex="-1"></a>Use <span class="in">`type = "response"`</span> for probabilities or expected counts. Use <span class="in">`type = "link"`</span> for the linear predictor $\eta$.</span>
+<span id="cb3-89"><a href="#cb3-89" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-90"><a href="#cb3-90" aria-hidden="true" tabindex="-1"></a><span class="fu">### 5. Logistic regression and the sigmoid</span></span>
+<span id="cb3-91"><a href="#cb3-91" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-92"><a href="#cb3-92" aria-hidden="true" tabindex="-1"></a>The logistic regression equation models log-odds as a linear function of the predictors. The whiteboard uses $z$ for the same linear predictor denoted by $\eta$ above:</span>
+<span id="cb3-93"><a href="#cb3-93" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-94"><a href="#cb3-94" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb3-95"><a href="#cb3-95" aria-hidden="true" tabindex="-1"></a>z=\log\left(\frac{p}{1-p}\right)</span>
+<span id="cb3-96"><a href="#cb3-96" aria-hidden="true" tabindex="-1"></a>=\beta_0+\beta_1\text{Genetics}+\beta_2\text{Exposure}+\beta_3\text{Age}.</span>
+<span id="cb3-97"><a href="#cb3-97" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb3-98"><a href="#cb3-98" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-99"><a href="#cb3-99" aria-hidden="true" tabindex="-1"></a>Both expressions for the inverse logit give the same probability:</span>
+<span id="cb3-100"><a href="#cb3-100" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-101"><a href="#cb3-101" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb3-102"><a href="#cb3-102" aria-hidden="true" tabindex="-1"></a>p=\frac{e^z}{1+e^z}=\frac{1}{1+e^{-z}}.</span>
+<span id="cb3-103"><a href="#cb3-103" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb3-104"><a href="#cb3-104" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-105"><a href="#cb3-105" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> $z$ <span class="pp">|</span> $p$ (approximate) <span class="pp">|</span></span>
+<span id="cb3-106"><a href="#cb3-106" aria-hidden="true" tabindex="-1"></a><span class="pp">|---:|---:|</span></span>
+<span id="cb3-107"><a href="#cb3-107" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> $-2$ <span class="pp">|</span> 0.119 <span class="pp">|</span></span>
+<span id="cb3-108"><a href="#cb3-108" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> $-1$ <span class="pp">|</span> 0.269 <span class="pp">|</span></span>
+<span id="cb3-109"><a href="#cb3-109" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> $0$ <span class="pp">|</span> 0.500 <span class="pp">|</span></span>
+<span id="cb3-110"><a href="#cb3-110" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> $1$ <span class="pp">|</span> 0.731 <span class="pp">|</span></span>
+<span id="cb3-111"><a href="#cb3-111" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> $2$ <span class="pp">|</span> 0.881 <span class="pp">|</span></span>
+<span id="cb3-112"><a href="#cb3-112" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-113"><a href="#cb3-113" aria-hidden="true" tabindex="-1"></a>The sigmoid is increasing and equals $0.5$ at $z=0$. Positive log-odds therefore correspond to $p&gt;0.5$, and negative log-odds correspond to $p&lt;0.5$. The threshold for a classification decision depends on the application.</span>
+<span id="cb3-114"><a href="#cb3-114" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-115"><a href="#cb3-115" aria-hidden="true" tabindex="-1"></a>In a second teaching calculation, $z=-1+0.8(\text{Exposure})+0.03(\text{Age})$. With exposure 2 and age 40, $z=-1+1.6+1.2=1.8$, and the predicted probability is about **85.8%**.</span>
+<span id="cb3-116"><a href="#cb3-116" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-117"><a href="#cb3-117" aria-hidden="true" tabindex="-1"></a><span class="fu">### 6. Probability, odds, and log-odds</span></span>
+<span id="cb3-118"><a href="#cb3-118" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-119"><a href="#cb3-119" aria-hidden="true" tabindex="-1"></a>Odds compare the probability of an event with the probability of its absence. Starting with $O=p/(1-p)$ gives $O(1-p)=p$ and thus $p=O/(1+O)$.</span>
+<span id="cb3-120"><a href="#cb3-120" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-121"><a href="#cb3-121" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Probability $p$ <span class="pp">|</span> Odds $p/(1-p)$ <span class="pp">|</span> Log-odds $\log(O)$ <span class="pp">|</span></span>
+<span id="cb3-122"><a href="#cb3-122" aria-hidden="true" tabindex="-1"></a><span class="pp">|---:|---:|---:|</span></span>
+<span id="cb3-123"><a href="#cb3-123" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 0.200 <span class="pp">|</span> 0.250 <span class="pp">|</span> $-1.386$ <span class="pp">|</span></span>
+<span id="cb3-124"><a href="#cb3-124" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 0.500 <span class="pp">|</span> 1.000 <span class="pp">|</span> $0$ <span class="pp">|</span></span>
+<span id="cb3-125"><a href="#cb3-125" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 0.800 <span class="pp">|</span> 4.000 <span class="pp">|</span> $1.386$ <span class="pp">|</span></span>
+<span id="cb3-126"><a href="#cb3-126" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 0.455 <span class="pp">|</span> 0.835 <span class="pp">|</span> $-0.180$ <span class="pp">|</span></span>
+<span id="cb3-127"><a href="#cb3-127" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-128"><a href="#cb3-128" aria-hidden="true" tabindex="-1"></a>At $p=0.80$, the odds are $4:1$. At $p=0.50$, the odds are $1:1$. In the whiteboard rearrest example, $p\approx0.455$ gives odds of about $0.835$, or about 84 rearrests for every 100 people who are not rearrested in a hypothetical group with that proportion. Converting those odds back gives $0.835/(1+0.835)\approx0.455$.</span>
+<span id="cb3-129"><a href="#cb3-129" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-130"><a href="#cb3-130" aria-hidden="true" tabindex="-1"></a><span class="fu">### 7. Confusion matrix and classification metrics</span></span>
+<span id="cb3-131"><a href="#cb3-131" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-132"><a href="#cb3-132" aria-hidden="true" tabindex="-1"></a>After applying a threshold to the model probabilities, compare the predicted labels with the observed labels. The matrix below uses predicted labels as rows and actual labels as columns.</span>
+<span id="cb3-133"><a href="#cb3-133" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-134"><a href="#cb3-134" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="pp">|</span> Actual positive <span class="pp">|</span> Actual negative <span class="pp">|</span></span>
+<span id="cb3-135"><a href="#cb3-135" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|---|</span></span>
+<span id="cb3-136"><a href="#cb3-136" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Predicted positive <span class="pp">|</span> True positive (TP), correctly detected <span class="pp">|</span> False positive (FP), false alarm <span class="pp">|</span></span>
+<span id="cb3-137"><a href="#cb3-137" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Predicted negative <span class="pp">|</span> False negative (FN), missed positive <span class="pp">|</span> True negative (TN), correctly ruled out <span class="pp">|</span></span>
+<span id="cb3-138"><a href="#cb3-138" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-139"><a href="#cb3-139" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Metric <span class="pp">|</span> Formula <span class="pp">|</span> Question it answers <span class="pp">|</span></span>
+<span id="cb3-140"><a href="#cb3-140" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|---|</span></span>
+<span id="cb3-141"><a href="#cb3-141" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Sensitivity, recall, or true positive rate (TPR) <span class="pp">|</span> $TP/(TP+FN)$ <span class="pp">|</span> What fraction of actual positives did we detect? <span class="pp">|</span></span>
+<span id="cb3-142"><a href="#cb3-142" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Specificity or true negative rate (TNR) <span class="pp">|</span> $TN/(TN+FP)$ <span class="pp">|</span> What fraction of actual negatives did we correctly rule out? <span class="pp">|</span></span>
+<span id="cb3-143"><a href="#cb3-143" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Precision or positive predictive value (PPV) <span class="pp">|</span> $TP/(TP+FP)$ <span class="pp">|</span> What fraction of predicted positives were actually positive? <span class="pp">|</span></span>
+<span id="cb3-144"><a href="#cb3-144" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-145"><a href="#cb3-145" aria-hidden="true" tabindex="-1"></a>Sensitivity and precision both have $TP$ in the numerator. Sensitivity divides by actual positives, while precision divides by predicted positives. Sensitivity is especially relevant when missed positives are costly. Specificity describes how often actual negatives are correctly excluded, and precision describes the reliability of positive predictions.</span>
+<span id="cb3-146"><a href="#cb3-146" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-147"><a href="#cb3-147" aria-hidden="true" tabindex="-1"></a>For a teaching example with 300 screening observations:</span>
+<span id="cb3-148"><a href="#cb3-148" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-149"><a href="#cb3-149" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="pp">|</span> Actual positive <span class="pp">|</span> Actual negative <span class="pp">|</span> Total <span class="pp">|</span></span>
+<span id="cb3-150"><a href="#cb3-150" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---:|---:|---:|</span></span>
+<span id="cb3-151"><a href="#cb3-151" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Predicted positive <span class="pp">|</span> 90 <span class="pp">|</span> 10 <span class="pp">|</span> 100 <span class="pp">|</span></span>
+<span id="cb3-152"><a href="#cb3-152" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Predicted negative <span class="pp">|</span> 10 <span class="pp">|</span> 190 <span class="pp">|</span> 200 <span class="pp">|</span></span>
+<span id="cb3-153"><a href="#cb3-153" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Total <span class="pp">|</span> 100 <span class="pp">|</span> 200 <span class="pp">|</span> 300 <span class="pp">|</span></span>
+<span id="cb3-154"><a href="#cb3-154" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-155"><a href="#cb3-155" aria-hidden="true" tabindex="-1"></a>Sensitivity is $90/100=90\%$, specificity is $190/200=95\%$, and precision is $90/100=90\%$. The sensitivity and precision denominators happen to be equal here because the number of actual positives equals the number of predicted positives. In a separate example with 80 true positives and 20 false positives, precision is $80/(80+20)=80\%$.</span>
+<span id="cb3-156"><a href="#cb3-156" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-157"><a href="#cb3-157" aria-hidden="true" tabindex="-1"></a><span class="fu">### 8. Geographic cross-validation</span></span>
+<span id="cb3-158"><a href="#cb3-158" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-159"><a href="#cb3-159" aria-hidden="true" tabindex="-1"></a>Random $k$-fold cross-validation splits individual observations. When nearby observations appear in both training and validation, it estimates performance on other observations in familiar areas. Geographic cross-validation holds out entire geographic groups to evaluate transfer to unseen regions.</span>
+<span id="cb3-160"><a href="#cb3-160" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-161"><a href="#cb3-161" aria-hidden="true" tabindex="-1"></a>With leave-one-group-out (LOGO) cross-validation, each district serves as the validation set once:</span>
+<span id="cb3-162"><a href="#cb3-162" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-163"><a href="#cb3-163" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Fold <span class="pp">|</span> Training districts <span class="pp">|</span> Held-out district <span class="pp">|</span></span>
+<span id="cb3-164"><a href="#cb3-164" aria-hidden="true" tabindex="-1"></a><span class="pp">|---:|---|---|</span></span>
+<span id="cb3-165"><a href="#cb3-165" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 1 <span class="pp">|</span> B, C, D <span class="pp">|</span> A <span class="pp">|</span></span>
+<span id="cb3-166"><a href="#cb3-166" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 2 <span class="pp">|</span> A, C, D <span class="pp">|</span> B <span class="pp">|</span></span>
+<span id="cb3-167"><a href="#cb3-167" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 3 <span class="pp">|</span> A, B, D <span class="pp">|</span> C <span class="pp">|</span></span>
+<span id="cb3-168"><a href="#cb3-168" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 4 <span class="pp">|</span> A, B, C <span class="pp">|</span> D <span class="pp">|</span></span>
+<span id="cb3-169"><a href="#cb3-169" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-170"><a href="#cb3-170" aria-hidden="true" tabindex="-1"></a>Fit the model anew for each fold, predict the held-out district, and summarize the results using a measure appropriate to the outcome, such as MAE, RMSE, or classification metrics. Choose the split based on the intended deployment. Nearby observations can still be spatially dependent across group boundaries.</span>
+<span id="cb3-171"><a href="#cb3-171" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-172"><a href="#cb3-172" aria-hidden="true" tabindex="-1"></a><span class="fu">### 9. Interpreting logistic coefficients with odds ratios</span></span>
+<span id="cb3-173"><a href="#cb3-173" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-174"><a href="#cb3-174" aria-hidden="true" tabindex="-1"></a>For a predictor that enters linearly and has no interaction term, a one-unit increase adds $\beta$ to the log-odds and multiplies the odds by $OR=e^\beta$, holding other variables fixed.</span>
+<span id="cb3-175"><a href="#cb3-175" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-176"><a href="#cb3-176" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> $\beta$ <span class="pp">|</span> $OR$ <span class="pp">|</span> Change in odds <span class="pp">|</span></span>
+<span id="cb3-177"><a href="#cb3-177" aria-hidden="true" tabindex="-1"></a><span class="pp">|---:|---:|---|</span></span>
+<span id="cb3-178"><a href="#cb3-178" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> $0$ <span class="pp">|</span> $1$ <span class="pp">|</span> Unchanged <span class="pp">|</span></span>
+<span id="cb3-179"><a href="#cb3-179" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> $0.693$ <span class="pp">|</span> $\approx2$ <span class="pp">|</span> Double <span class="pp">|</span></span>
+<span id="cb3-180"><a href="#cb3-180" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> $-0.693$ <span class="pp">|</span> $\approx0.5$ <span class="pp">|</span> Halve <span class="pp">|</span></span>
+<span id="cb3-181"><a href="#cb3-181" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> $0.20$ <span class="pp">|</span> $\approx1.221$ <span class="pp">|</span> Increase by about 22.1% <span class="pp">|</span></span>
+<span id="cb3-182"><a href="#cb3-182" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-183"><a href="#cb3-183" aria-hidden="true" tabindex="-1"></a>The probability change depends on the starting probability. If $p=0.20$, the initial odds are $0.25$. Doubling them yields $0.50$, which corresponds to $0.50/(1+0.50)\approx0.333$, or **33.3%**. Starting from $p=0.05$, the same odds ratio of 2 gives a probability of about **9.52%**.</span>
+<span id="cb3-184"><a href="#cb3-184" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-185"><a href="#cb3-185" aria-hidden="true" tabindex="-1"></a><span class="fu">### 10. Classification thresholds</span></span>
+<span id="cb3-186"><a href="#cb3-186" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-187"><a href="#cb3-187" aria-hidden="true" tabindex="-1"></a>A threshold $t$ assigns a predicted class of 1 to observations with $\hat p\ge t$ and 0 to those with $\hat p&lt;t$. Consider five teaching observations:</span>
+<span id="cb3-188"><a href="#cb3-188" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-189"><a href="#cb3-189" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Observation <span class="pp">|</span> Predicted probability <span class="pp">|</span> Actual class <span class="pp">|</span></span>
+<span id="cb3-190"><a href="#cb3-190" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---:|---:|</span></span>
+<span id="cb3-191"><a href="#cb3-191" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> A <span class="pp">|</span> 0.90 <span class="pp">|</span> 1 <span class="pp">|</span></span>
+<span id="cb3-192"><a href="#cb3-192" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> B <span class="pp">|</span> 0.70 <span class="pp">|</span> 1 <span class="pp">|</span></span>
+<span id="cb3-193"><a href="#cb3-193" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> C <span class="pp">|</span> 0.45 <span class="pp">|</span> 1 <span class="pp">|</span></span>
+<span id="cb3-194"><a href="#cb3-194" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> D <span class="pp">|</span> 0.35 <span class="pp">|</span> 0 <span class="pp">|</span></span>
+<span id="cb3-195"><a href="#cb3-195" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> E <span class="pp">|</span> 0.10 <span class="pp">|</span> 0 <span class="pp">|</span></span>
+<span id="cb3-196"><a href="#cb3-196" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-197"><a href="#cb3-197" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Threshold <span class="pp">|</span> Predicted positives <span class="pp">|</span> TP <span class="pp">|</span> FN <span class="pp">|</span> FP <span class="pp">|</span> TN <span class="pp">|</span> Sensitivity <span class="pp">|</span> Specificity <span class="pp">|</span> Precision <span class="pp">|</span></span>
+<span id="cb3-198"><a href="#cb3-198" aria-hidden="true" tabindex="-1"></a><span class="pp">|---:|---|---:|---:|---:|---:|---:|---:|---:|</span></span>
+<span id="cb3-199"><a href="#cb3-199" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 0.50 <span class="pp">|</span> A, B <span class="pp">|</span> 2 <span class="pp">|</span> 1 <span class="pp">|</span> 0 <span class="pp">|</span> 2 <span class="pp">|</span> 66.7% <span class="pp">|</span> 100% <span class="pp">|</span> 100% <span class="pp">|</span></span>
+<span id="cb3-200"><a href="#cb3-200" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 0.30 <span class="pp">|</span> A, B, C, D <span class="pp">|</span> 3 <span class="pp">|</span> 0 <span class="pp">|</span> 1 <span class="pp">|</span> 1 <span class="pp">|</span> 100% <span class="pp">|</span> 50% <span class="pp">|</span> 75% <span class="pp">|</span></span>
+<span id="cb3-201"><a href="#cb3-201" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-202"><a href="#cb3-202" aria-hidden="true" tabindex="-1"></a>For fixed predictions and labels, lowering the threshold can only expand the set of predicted positives. Sensitivity can rise or stay the same, and specificity can fall or stay the same. Raising the threshold reverses these directions. Precision can move either way depending on which observations enter or leave the predicted-positive set. A threshold of $0.50$ is a common starting point. The relative costs of false positives and false negatives should guide the decision.</span>
+<span id="cb3-203"><a href="#cb3-203" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-204"><a href="#cb3-204" aria-hidden="true" tabindex="-1"></a><span class="fu">### 11. Accuracy and class imbalance</span></span>
+<span id="cb3-205"><a href="#cb3-205" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-206"><a href="#cb3-206" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb3-207"><a href="#cb3-207" aria-hidden="true" tabindex="-1"></a>\text{Accuracy}=\frac{TP+TN}{TP+TN+FP+FN}.</span>
+<span id="cb3-208"><a href="#cb3-208" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb3-209"><a href="#cb3-209" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-210"><a href="#cb3-210" aria-hidden="true" tabindex="-1"></a>Suppose 10 out of 1,000 people have a disease. A classifier that predicts everyone as negative gets 990 out of 1,000 predictions correct and has **99% accuracy**. Its sensitivity is **0%** because it misses all 10 actual positives. Under class imbalance, examine the confusion matrix and the metrics that reflect the costs of the relevant errors.</span>
+<span id="cb3-211"><a href="#cb3-211" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-212"><a href="#cb3-212" aria-hidden="true" tabindex="-1"></a><span class="fu">### 12. The identity link</span></span>
+<span id="cb3-213"><a href="#cb3-213" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-214"><a href="#cb3-214" aria-hidden="true" tabindex="-1"></a>An identity link leaves the conditional mean on its original scale. For ordinary linear regression,</span>
+<span id="cb3-215"><a href="#cb3-215" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-216"><a href="#cb3-216" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb3-217"><a href="#cb3-217" aria-hidden="true" tabindex="-1"></a>g(\mu)=\mu,\qquad</span>
+<span id="cb3-218"><a href="#cb3-218" aria-hidden="true" tabindex="-1"></a>E<span class="co">[</span><span class="ot">Y\mid X</span><span class="co">]</span>=\eta=\beta_0+\beta_1X_1+\cdots.</span>
+<span id="cb3-219"><a href="#cb3-219" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb3-220"><a href="#cb3-220" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-221"><a href="#cb3-221" aria-hidden="true" tabindex="-1"></a>The log and logit links use transformed mean scales, so predictions for Poisson and logistic regression need the corresponding inverse links.</span>
+<span id="cb3-222"><a href="#cb3-222" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-223"><a href="#cb3-223" aria-hidden="true" tabindex="-1"></a><span class="fu">### 13. Fitting and testing a logistic model in R</span></span>
+<span id="cb3-224"><a href="#cb3-224" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-225"><a href="#cb3-225" aria-hidden="true" tabindex="-1"></a>The following workflow uses illustrative data frames and column names. The model is fitted on the training set. Predicted probabilities for the separate test set are then converted to labels using the chosen threshold.</span>
+<span id="cb3-226"><a href="#cb3-226" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-227"><a href="#cb3-227" aria-hidden="true" tabindex="-1"></a><span class="in">~~~r</span></span>
+<span id="cb3-228"><a href="#cb3-228" aria-hidden="true" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">glm</span>(</span>
+<span id="cb3-229"><a href="#cb3-229" aria-hidden="true" tabindex="-1"></a>  outcome <span class="sc">~</span> x1 <span class="sc">+</span> x2,</span>
+<span id="cb3-230"><a href="#cb3-230" aria-hidden="true" tabindex="-1"></a>  <span class="at">family =</span> <span class="fu">binomial</span>(<span class="at">link =</span> <span class="st">"logit"</span>),</span>
+<span id="cb3-231"><a href="#cb3-231" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> train</span>
+<span id="cb3-232"><a href="#cb3-232" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-233"><a href="#cb3-233" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-234"><a href="#cb3-234" aria-hidden="true" tabindex="-1"></a><span class="fu">exp</span>(<span class="fu">coef</span>(model))</span>
+<span id="cb3-235"><a href="#cb3-235" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-236"><a href="#cb3-236" aria-hidden="true" tabindex="-1"></a>p <span class="ot">&lt;-</span> <span class="fu">predict</span>(model, <span class="at">newdata =</span> test, <span class="at">type =</span> <span class="st">"response"</span>)</span>
+<span id="cb3-237"><a href="#cb3-237" aria-hidden="true" tabindex="-1"></a>predicted_class <span class="ot">&lt;-</span> <span class="fu">as.integer</span>(p <span class="sc">&gt;=</span> <span class="fl">0.50</span>)</span>
+<span id="cb3-238"><a href="#cb3-238" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb3-239"><a href="#cb3-239" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-240"><a href="#cb3-240" aria-hidden="true" tabindex="-1"></a>The exponentiated intercept gives the baseline odds when the predictors are zero. The exponentiated slope coefficients are odds ratios for one-unit changes in their respective predictors in this additive model.</span>
+<span id="cb3-241"><a href="#cb3-241" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-242"><a href="#cb3-242" aria-hidden="true" tabindex="-1"></a><span class="fu">## Proving R Works</span></span>
+<span id="cb3-243"><a href="#cb3-243" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-244"><a href="#cb3-244" aria-hidden="true" tabindex="-1"></a><span class="in">~~~{r}</span></span>
+<span id="cb3-245"><a href="#cb3-245" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: logistic-worked-example</span></span>
+<span id="cb3-246"><a href="#cb3-246" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-247"><a href="#cb3-247" aria-hidden="true" tabindex="-1"></a>eta <span class="ot">&lt;-</span> <span class="sc">-</span><span class="dv">3</span> <span class="sc">+</span> <span class="fl">0.05</span> <span class="sc">*</span> <span class="dv">40</span> <span class="sc">+</span> <span class="fl">0.8</span> <span class="sc">*</span> <span class="dv">2</span></span>
+<span id="cb3-248"><a href="#cb3-248" aria-hidden="true" tabindex="-1"></a>p <span class="ot">&lt;-</span> <span class="fu">plogis</span>(eta)</span>
+<span id="cb3-249"><a href="#cb3-249" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-250"><a href="#cb3-250" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">c</span>(<span class="at">linear_predictor =</span> eta, <span class="at">probability =</span> p, <span class="at">log_odds =</span> <span class="fu">qlogis</span>(p)), <span class="dv">3</span>)</span>
+<span id="cb3-251"><a href="#cb3-251" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb3-252"><a href="#cb3-252" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-253"><a href="#cb3-253" aria-hidden="true" tabindex="-1"></a><span class="in">~~~{r}</span></span>
+<span id="cb3-254"><a href="#cb3-254" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: session-info</span></span>
+<span id="cb3-255"><a href="#cb3-255" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-256"><a href="#cb3-256" aria-hidden="true" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span>
+<span id="cb3-257"><a href="#cb3-257" aria-hidden="true" tabindex="-1"></a><span class="in">~~~</span></span>
+<span id="cb3-258"><a href="#cb3-258" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-259"><a href="#cb3-259" aria-hidden="true" tabindex="-1"></a><span class="fu">## Reflection</span></span>
+<span id="cb3-260"><a href="#cb3-260" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-261"><a href="#cb3-261" aria-hidden="true" tabindex="-1"></a>The threshold example shows how the same model can catch more actual positives while creating more false alarms. I would decide which error matters most before choosing a cutoff. I would also choose geographic holdouts if the model is intended for a district that supplied no training data.</span>
+<span id="cb3-262"><a href="#cb3-262" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-263"><a href="#cb3-263" aria-hidden="true" tabindex="-1"></a><span class="fu">## Questions I Still Have</span></span>
+<span id="cb3-264"><a href="#cb3-264" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-265"><a href="#cb3-265" aria-hidden="true" tabindex="-1"></a>None</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></div>
+</div></div></div></div></div>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

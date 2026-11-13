@@ -1,0 +1,265 @@
+---
+title: "Week 10: GLMs, Logistic Regression, and Classification"
+description: "Link functions, odds ratios, confusion matrices, classification thresholds, and geographic cross-validation."
+date: 2026-11-06
+---
+
+## What We Did
+
+We compared how linear, Poisson, and logistic regression turn a linear predictor into an expected outcome. We worked through probability, odds, and log-odds, then used a confusion matrix to see how classification thresholds affect model evaluation. We also compared random and geographic cross-validation.
+
+## Key Concepts
+
+- A generalized linear model (GLM) links the conditional mean $\mu=E[Y\mid X]$ to the linear predictor $\eta=X\beta$.
+- Logistic regression uses the logit link and the sigmoid inverse link. The model estimates a probability, and a decision threshold turns that probability into a class.
+- Exponentiating a logistic coefficient gives a multiplier for the odds of the outcome, holding other predictors fixed.
+- Sensitivity, specificity, and precision use different denominators. Class imbalance can make accuracy look high even when sensitivity is zero.
+- The validation split should reflect where the model will be used. Geographic cross-validation holds out entire areas.
+
+## Note
+
+### 1. From a GLM score to a prediction
+
+Suppose a logistic model predicts whether someone has a disease. The outcome $Y$ is binary, and the model predicts the probability $p$ of $Y=1$. Age, exposure to a hazard, and genetic information are possible predictors. A simplified teaching model uses age and exposure:
+
+$$
+\eta=-3+0.05(\text{Age})+0.8(\text{Exposure}).
+$$
+
+For age 40 and exposure 2, the linear predictor is $\eta=-3+0.05(40)+0.8(2)=0.6$. The score can take any real value. To obtain a probability, apply the sigmoid:
+
+$$
+p=\frac{1}{1+e^{-\eta}}
+=\frac{1}{1+e^{-0.6}}\approx 0.646.
+$$
+
+The model's predicted probability is about **64.6%**. The coefficients and inputs are teaching values.
+
+The **link function** $g$ maps the conditional mean to the linear-predictor scale. For logistic regression, the link is the logit:
+
+$$
+g(p)=\log\left(\frac{p}{1-p}\right).
+$$
+
+Substituting $p\approx0.646$ gives $g(p)\approx0.6$. The **inverse link** $g^{-1}$ maps the linear predictor back to the outcome scale. The link acts on the conditional mean of $Y$. It does not recover the predictors from an observed outcome.
+
+### 2. Predictors, linear predictor, and conditional mean
+
+| Symbol | Meaning | In the disease example |
+|---|---|---|
+| $X$ | Known predictor values | Age 40 and exposure 2 |
+| $\eta$ | Linear predictor calculated from the inputs and fitted coefficients | $0.6$ |
+| $\mu$ | Expected outcome given the inputs, $E[Y\mid X]$ | $p\approx0.646$ |
+
+The model is written as $g(\mu)=\eta=X\beta$, where $X$ includes the intercept term. At prediction time, calculate $\eta$ from $X$, then use $\mu=g^{-1}(\eta)$. For a binary outcome, $\mu=p$. For a Poisson count, $\mu=\lambda$ is an expected count. For ordinary linear regression, $\mu$ is the predicted mean in the original outcome units.
+
+### 3. Same linear predictor, different outcome scales
+
+| Model | Outcome | Link $g(\mu)$ | Inverse link | Prediction when $\eta=2$ |
+|---|---|---|---|---|
+| Logistic | Binary event | $\log[p/(1-p)]$ | $p=1/(1+e^{-\eta})$ | Probability $\approx0.881$ |
+| Poisson | Event count | $\log(\mu)$ | $\mu=e^\eta$ | Expected count $\approx7.39$ |
+| Linear | Continuous outcome | $\mu$ | $\mu=\eta$ | Expected value $2$ in the original units |
+
+The logistic inverse link keeps predictions strictly between zero and one for finite scores. The Poisson inverse link gives a positive expected count, which can be fractional even when the observed counts are whole numbers. The linear model uses the identity transformation.
+
+### 4. GLMs and prediction scales in R
+
+~~~r
+m_logistic <- glm(
+  disease ~ genetics + exposure + age,
+  family = binomial(link = "logit"),
+  data = df
+)
+
+m_poisson <- glm(
+  events ~ exposure + age,
+  family = poisson(link = "log"),
+  data = df
+)
+
+predict(m_logistic, type = "response")  # Probabilities
+predict(m_poisson, type = "response")   # Expected counts
+
+predict(m_logistic, type = "link")      # Log-odds
+predict(m_poisson, type = "link")       # Log expected counts
+~~~
+
+Use `type = "response"` for probabilities or expected counts. Use `type = "link"` for the linear predictor $\eta$.
+
+### 5. Logistic regression and the sigmoid
+
+The logistic regression equation models log-odds as a linear function of the predictors. The whiteboard uses $z$ for the same linear predictor denoted by $\eta$ above:
+
+$$
+z=\log\left(\frac{p}{1-p}\right)
+=\beta_0+\beta_1\text{Genetics}+\beta_2\text{Exposure}+\beta_3\text{Age}.
+$$
+
+Both expressions for the inverse logit give the same probability:
+
+$$
+p=\frac{e^z}{1+e^z}=\frac{1}{1+e^{-z}}.
+$$
+
+| $z$ | $p$ (approximate) |
+|---:|---:|
+| $-2$ | 0.119 |
+| $-1$ | 0.269 |
+| $0$ | 0.500 |
+| $1$ | 0.731 |
+| $2$ | 0.881 |
+
+The sigmoid is increasing and equals $0.5$ at $z=0$. Positive log-odds therefore correspond to $p>0.5$, and negative log-odds correspond to $p<0.5$. The threshold for a classification decision depends on the application.
+
+In a second teaching calculation, $z=-1+0.8(\text{Exposure})+0.03(\text{Age})$. With exposure 2 and age 40, $z=-1+1.6+1.2=1.8$, and the predicted probability is about **85.8%**.
+
+### 6. Probability, odds, and log-odds
+
+Odds compare the probability of an event with the probability of its absence. Starting with $O=p/(1-p)$ gives $O(1-p)=p$ and thus $p=O/(1+O)$.
+
+| Probability $p$ | Odds $p/(1-p)$ | Log-odds $\log(O)$ |
+|---:|---:|---:|
+| 0.200 | 0.250 | $-1.386$ |
+| 0.500 | 1.000 | $0$ |
+| 0.800 | 4.000 | $1.386$ |
+| 0.455 | 0.835 | $-0.180$ |
+
+At $p=0.80$, the odds are $4:1$. At $p=0.50$, the odds are $1:1$. In the whiteboard rearrest example, $p\approx0.455$ gives odds of about $0.835$, or about 84 rearrests for every 100 people who are not rearrested in a hypothetical group with that proportion. Converting those odds back gives $0.835/(1+0.835)\approx0.455$.
+
+### 7. Confusion matrix and classification metrics
+
+After applying a threshold to the model probabilities, compare the predicted labels with the observed labels. The matrix below uses predicted labels as rows and actual labels as columns.
+
+| | Actual positive | Actual negative |
+|---|---|---|
+| Predicted positive | True positive (TP), correctly detected | False positive (FP), false alarm |
+| Predicted negative | False negative (FN), missed positive | True negative (TN), correctly ruled out |
+
+| Metric | Formula | Question it answers |
+|---|---|---|
+| Sensitivity, recall, or true positive rate (TPR) | $TP/(TP+FN)$ | What fraction of actual positives did we detect? |
+| Specificity or true negative rate (TNR) | $TN/(TN+FP)$ | What fraction of actual negatives did we correctly rule out? |
+| Precision or positive predictive value (PPV) | $TP/(TP+FP)$ | What fraction of predicted positives were actually positive? |
+
+Sensitivity and precision both have $TP$ in the numerator. Sensitivity divides by actual positives, while precision divides by predicted positives. Sensitivity is especially relevant when missed positives are costly. Specificity describes how often actual negatives are correctly excluded, and precision describes the reliability of positive predictions.
+
+For a teaching example with 300 screening observations:
+
+| | Actual positive | Actual negative | Total |
+|---|---:|---:|---:|
+| Predicted positive | 90 | 10 | 100 |
+| Predicted negative | 10 | 190 | 200 |
+| Total | 100 | 200 | 300 |
+
+Sensitivity is $90/100=90\%$, specificity is $190/200=95\%$, and precision is $90/100=90\%$. The sensitivity and precision denominators happen to be equal here because the number of actual positives equals the number of predicted positives. In a separate example with 80 true positives and 20 false positives, precision is $80/(80+20)=80\%$.
+
+### 8. Geographic cross-validation
+
+Random $k$-fold cross-validation splits individual observations. When nearby observations appear in both training and validation, it estimates performance on other observations in familiar areas. Geographic cross-validation holds out entire geographic groups to evaluate transfer to unseen regions.
+
+With leave-one-group-out (LOGO) cross-validation, each district serves as the validation set once:
+
+| Fold | Training districts | Held-out district |
+|---:|---|---|
+| 1 | B, C, D | A |
+| 2 | A, C, D | B |
+| 3 | A, B, D | C |
+| 4 | A, B, C | D |
+
+Fit the model anew for each fold, predict the held-out district, and summarize the results using a measure appropriate to the outcome, such as MAE, RMSE, or classification metrics. Choose the split based on the intended deployment. Nearby observations can still be spatially dependent across group boundaries.
+
+### 9. Interpreting logistic coefficients with odds ratios
+
+For a predictor that enters linearly and has no interaction term, a one-unit increase adds $\beta$ to the log-odds and multiplies the odds by $OR=e^\beta$, holding other variables fixed.
+
+| $\beta$ | $OR$ | Change in odds |
+|---:|---:|---|
+| $0$ | $1$ | Unchanged |
+| $0.693$ | $\approx2$ | Double |
+| $-0.693$ | $\approx0.5$ | Halve |
+| $0.20$ | $\approx1.221$ | Increase by about 22.1% |
+
+The probability change depends on the starting probability. If $p=0.20$, the initial odds are $0.25$. Doubling them yields $0.50$, which corresponds to $0.50/(1+0.50)\approx0.333$, or **33.3%**. Starting from $p=0.05$, the same odds ratio of 2 gives a probability of about **9.52%**.
+
+### 10. Classification thresholds
+
+A threshold $t$ assigns a predicted class of 1 to observations with $\hat p\ge t$ and 0 to those with $\hat p<t$. Consider five teaching observations:
+
+| Observation | Predicted probability | Actual class |
+|---|---:|---:|
+| A | 0.90 | 1 |
+| B | 0.70 | 1 |
+| C | 0.45 | 1 |
+| D | 0.35 | 0 |
+| E | 0.10 | 0 |
+
+| Threshold | Predicted positives | TP | FN | FP | TN | Sensitivity | Specificity | Precision |
+|---:|---|---:|---:|---:|---:|---:|---:|---:|
+| 0.50 | A, B | 2 | 1 | 0 | 2 | 66.7% | 100% | 100% |
+| 0.30 | A, B, C, D | 3 | 0 | 1 | 1 | 100% | 50% | 75% |
+
+For fixed predictions and labels, lowering the threshold can only expand the set of predicted positives. Sensitivity can rise or stay the same, and specificity can fall or stay the same. Raising the threshold reverses these directions. Precision can move either way depending on which observations enter or leave the predicted-positive set. A threshold of $0.50$ is a common starting point. The relative costs of false positives and false negatives should guide the decision.
+
+### 11. Accuracy and class imbalance
+
+$$
+\text{Accuracy}=\frac{TP+TN}{TP+TN+FP+FN}.
+$$
+
+Suppose 10 out of 1,000 people have a disease. A classifier that predicts everyone as negative gets 990 out of 1,000 predictions correct and has **99% accuracy**. Its sensitivity is **0%** because it misses all 10 actual positives. Under class imbalance, examine the confusion matrix and the metrics that reflect the costs of the relevant errors.
+
+### 12. The identity link
+
+An identity link leaves the conditional mean on its original scale. For ordinary linear regression,
+
+$$
+g(\mu)=\mu,\qquad
+E[Y\mid X]=\eta=\beta_0+\beta_1X_1+\cdots.
+$$
+
+The log and logit links use transformed mean scales, so predictions for Poisson and logistic regression need the corresponding inverse links.
+
+### 13. Fitting and testing a logistic model in R
+
+The following workflow uses illustrative data frames and column names. The model is fitted on the training set. Predicted probabilities for the separate test set are then converted to labels using the chosen threshold.
+
+~~~r
+model <- glm(
+  outcome ~ x1 + x2,
+  family = binomial(link = "logit"),
+  data = train
+)
+
+exp(coef(model))
+
+p <- predict(model, newdata = test, type = "response")
+predicted_class <- as.integer(p >= 0.50)
+~~~
+
+The exponentiated intercept gives the baseline odds when the predictors are zero. The exponentiated slope coefficients are odds ratios for one-unit changes in their respective predictors in this additive model.
+
+## Proving R Works
+
+~~~{r}
+#| label: logistic-worked-example
+
+eta <- -3 + 0.05 * 40 + 0.8 * 2
+p <- plogis(eta)
+
+round(c(linear_predictor = eta, probability = p, log_odds = qlogis(p)), 3)
+~~~
+
+~~~{r}
+#| label: session-info
+
+sessionInfo()
+~~~
+
+## Reflection
+
+The threshold example shows how the same model can catch more actual positives while creating more false alarms. I would decide which error matters most before choosing a cutoff. I would also choose geographic holdouts if the model is intended for a district that supplied no training data.
+
+## Questions I Still Have
+
+None
