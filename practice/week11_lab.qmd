@@ -1,0 +1,407 @@
+---
+title: "Week 11 Lab: Is the Model Race-Blind?"
+subtitle: "A guided, worked example: logistic regression from start to finish"
+format:
+  html:
+    toc: true
+    code-overflow: wrap
+execute:
+  warning: false
+  message: false
+  freeze: false
+---
+
+## How to use this lab
+
+This lab is **ungraded**. It walks through everything from the last two weeks, one step at a time, on real data.
+
+- **Type the code. Don't copy and paste it.** Typing makes you read every word.
+- Each step says **what** we're doing and **why**.
+- **Checkpoints** give the numbers you should get. If yours don't match, stop and fix it before moving on.
+- A5 asks you to do all of this again on new data, with much less help. Anything you understand here, you'll be able to do there.
+
+---
+
+## Step 0: Packages
+
+```{r}
+library(tidyverse)
+library(pROC)    # for ROC curves and AUC. Install once with install.packages("pROC")
+```
+
+---
+
+## Step 1: Load the data
+
+This is the file ProPublica used in its 2016 investigation of COMPAS, a risk score used in court in Broward County, Florida. Each row is **a person** who was scored by COMPAS. The outcome column `two_year_recid` is **1** if they were rearrested within two years and **0** if they weren't.
+
+```{r}
+url <- "https://raw.githubusercontent.com/propublica/compas-analysis/master/compas-scores-two-years.csv"
+
+compas_raw <- read_csv(url, name_repair = make.unique)
+```
+
+**Why `name_repair = make.unique`?** The file has two columns named `priors_count` and two named `decile_score`. The copies are identical. This keeps the first one under its normal name and renames the copy (`priors_count.1`), so `priors_count` works the way you'd expect.
+
+```{r}
+glimpse(compas_raw)
+```
+
+---
+
+## Step 2: Clean it
+
+We use the same filters ProPublica used, so our numbers line up with theirs:
+
+- `days_b_screening_arrest` between −30 and 30: the COMPAS screening happened close to the arrest it was about.
+- `is_recid != -1`: drop rows where the outcome couldn't be determined.
+- `c_charge_degree != "O"`: drop ordinary traffic offenses.
+- `score_text != "N/A"`: drop people without a COMPAS score.
+
+Then we make the variables the model needs.
+
+```{r}
+compas <- compas_raw %>%
+  filter(days_b_screening_arrest >= -30,
+         days_b_screening_arrest <= 30,
+         is_recid != -1,
+         c_charge_degree != "O",
+         score_text != "N/A") %>%
+  mutate(
+    male      = as.integer(sex == "Male"),
+    felony    = as.integer(c_charge_degree == "F"),
+    juv_total = juv_fel_count + juv_misd_count + juv_other_count
+  )
+
+nrow(compas)
+mean(compas$two_year_recid)
+```
+
+::: {.callout-tip}
+## Checkpoint 1
+**6,172 people.** **0.455**, so about 46% were rearrested within two years.
+:::
+
+
+---
+
+## Step 3: Fit the model
+
+`family = binomial` tells R the outcome is 0/1.
+
+```{r}
+recid_fit <- glm(two_year_recid ~ age + priors_count + male + felony + juv_total,
+                 family = binomial,
+                 data = compas)
+
+summary(recid_fit)
+```
+
+The numbers in the `Estimate` column are on the **log-odds** scale. Nobody thinks in log-odds, so turn them into **odds ratios**:
+
+```{r}
+exp(coef(recid_fit))
+```
+
+::: {.callout-tip}
+## Checkpoint 2
+| term | estimate (log-odds) | odds ratio |
+|---|---|---|
+| age | −0.044 | 0.96 |
+| priors_count | 0.160 | 1.17 |
+| male | 0.328 | 1.39 |
+| felony | 0.229 | 1.26 |
+| juv_total | 0.135 | 1.14 |
+:::
+
+**Reading them.** Every odds ratio is a comparison, with everything else in the model held the same:
+
+- **priors_count, 1.17:** compared to someone with one fewer prior, the odds of rearrest are 17% higher.
+- **age, 0.96:** compared to someone one year younger, the odds are 4% lower.
+- **male, 1.39:** compared to a woman with the same age, priors, charge and juvenile record, the odds are 39% higher.
+
+>  **Write it yourself:** read the `felony` odds ratio in one sentence. Start with *"Compared to…"*
+
+::: {.callout-note}
+## My answer
+Compared to a person charged with a misdemeanor, a person charged with a felony has about **26% higher odds of rearrest within two years**, holding age, prior arrests, sex, and juvenile record constant.
+
+The odds ratio is `1.26`, so the percent change in odds is `(1.26 - 1) * 100 = 26%`. This is a statement about **odds**, not a 26-percentage-point increase in probability.
+:::
+
+---
+
+## Step 4: Predict probabilities
+
+```{r}
+compas <- compas %>%
+  mutate(pred = predict(recid_fit, type = "response"))
+
+compas %>%
+  select(age, priors_count, male, felony, two_year_recid, pred) %>%
+  head(10)
+```
+
+Every person now has a probability between 0 and 1. Now we need to choose our threshold to assign everyone a 0 or a 1.
+
+---
+
+## Step 5: Pick a cutoff, build a confusion matrix
+
+Flag anyone with a predicted probability at or above **0.5** as "high risk."
+
+```{r}
+compas <- compas %>%
+  mutate(flag = as.integer(pred >= 0.5))
+
+table(predicted = compas$flag, actual = compas$two_year_recid)
+```
+
+This is the confusion matrix:
+
+- **flag 1, actual 1:** true positives. Flagged and rearrested.
+- **flag 1, actual 0:** false positives. Flagged, **not** rearrested.
+- **flag 0, actual 1:** false negatives. Not flagged, **was** rearrested.
+- **flag 0, actual 0:** true negatives. Not flagged, not rearrested.
+
+Now the summary rates:
+
+```{r}
+compas %>%
+  summarize(
+    sensitivity = sum(flag == 1 & two_year_recid == 1) / sum(two_year_recid == 1),
+    specificity = sum(flag == 0 & two_year_recid == 0) / sum(two_year_recid == 0),
+    accuracy    = mean(flag == two_year_recid)
+  )
+```
+
+::: {.callout-tip}
+## Checkpoint 3
+Confusion matrix: TP = 1,551, FP = 713, FN = 1,258, TN = 2,650.
+Sensitivity **0.55**, specificity **0.79**, accuracy **0.68**.
+:::
+
+### Try other cutoffs
+
+Rather than retyping all that for every cutoff, write a small function. It takes the data and a threshold, and returns the rates.
+
+```{r}
+rates_at <- function(data, threshold) {
+  data %>%
+    mutate(flag = as.integer(pred >= threshold)) %>%
+    summarize(
+      threshold   = threshold,
+      sensitivity = sum(flag == 1 & two_year_recid == 1) / sum(two_year_recid == 1),
+      specificity = sum(flag == 0 & two_year_recid == 0) / sum(two_year_recid == 0),
+      accuracy    = mean(flag == two_year_recid)
+    )
+}
+
+bind_rows(
+  rates_at(compas, 0.3),
+  rates_at(compas, 0.5),
+  rates_at(compas, 0.7)
+)
+```
+
+::: {.callout-tip}
+## Checkpoint 4
+| threshold | sensitivity | specificity |
+|---|---|---|
+| 0.3 | 0.90 | 0.31 |
+| 0.5 | 0.55 | 0.79 |
+| 0.7 | 0.20 | 0.96 |
+:::
+
+Same pattern as the quarantine cards: lower the cutoff and you catch more people, and you also flag more people who weren't rearrested.
+
+---
+
+## Step 6: Every cutoff at once, with ROC and AUC
+
+```{r}
+roc_obj <- roc(compas$two_year_recid, compas$pred)
+
+auc(roc_obj)
+
+ggroc(roc_obj, legacy.axes = TRUE) +
+  geom_abline(linetype = "dashed", color = "grey50") +
+  labs(x = "False positive rate (1 − specificity)",
+       y = "True positive rate (sensitivity)",
+       title = "Our race-blind model") +
+  theme_minimal()
+```
+
+**Why `legacy.axes = TRUE`?** Without it, `ggroc()` puts specificity on a backwards x-axis. Same curve, confusing labels.
+
+### How does it compare to COMPAS?
+
+The file includes COMPAS's own score, `decile_score` (1 to 10). It's a ranking, so we can draw its ROC curve too.
+
+```{r}
+roc_compas <- roc(compas$two_year_recid, compas$decile_score)
+auc(roc_compas)
+
+ggroc(list(`Our model` = roc_obj, `COMPAS` = roc_compas), legacy.axes = TRUE) +
+  geom_abline(linetype = "dashed", color = "grey50") +
+  labs(x = "False positive rate", y = "True positive rate", color = NULL) +
+  theme_minimal()
+```
+
+::: {.callout-tip}
+## Checkpoint 5
+Our model: AUC **0.73**. COMPAS: AUC **0.71**.
+:::
+
+Your five-variable model ranks people about as well as the commercial tool.
+
+---
+
+## Step 7: Who gets the errors?
+
+The question from last week: **we left race out, so is the model race-blind?**
+
+Same model, same cutoff (0.5). Compute the error rates separately for Black and white defendants.
+
+- **False positive rate:** of the people **not** rearrested, what share did we flag high risk?
+- **False negative rate:** of the people who **were** rearrested, what share did we flag low risk?
+
+```{r}
+compas %>%
+  filter(race %in% c("African-American", "Caucasian")) %>%
+  mutate(flag = as.integer(pred >= 0.5)) %>%
+  group_by(race) %>%
+  summarize(
+    n         = n(),
+    base_rate = mean(two_year_recid),
+    fpr       = sum(flag == 1 & two_year_recid == 0) / sum(two_year_recid == 0),
+    fnr       = sum(flag == 0 & two_year_recid == 1) / sum(two_year_recid == 1),
+    accuracy  = mean(flag == two_year_recid)
+  )
+```
+
+::: {.callout-tip}
+## Checkpoint 6
+| | n | base rate | FPR | FNR | accuracy |
+|---|---|---|---|---|---|
+| African-American | 3,175 | 0.52 | **0.29** | 0.34 | 0.68 |
+| Caucasian | 2,103 | 0.39 | **0.14** | **0.60** | 0.68 |
+:::
+
+
+---
+
+## Step 8: How did race get in?
+
+Race isn't in the model. Look at what **is** in the model:
+
+```{r}
+compas %>%
+  filter(race %in% c("African-American", "Caucasian")) %>%
+  group_by(race) %>%
+  summarize(
+    mean_priors = mean(priors_count),
+    mean_age    = mean(age)
+  )
+```
+
+::: {.callout-tip}
+## Checkpoint 7
+African-American: priors **4.2**, age **32**. Caucasian: priors **2.3**, age **38**.
+:::
+
+Priors are past arrests. Arrests depend on where police patrol and who they stop.
+
+### An experiment: put race back in
+
+If leaving race out made the model fair, putting it back in should make things much worse. Does it?
+
+```{r}
+compas <- compas %>%
+  mutate(black = as.integer(race == "African-American"))
+
+fit_race <- glm(two_year_recid ~ age + priors_count + male + felony + juv_total + black,
+                family = binomial, data = compas)
+
+compas <- compas %>%
+  mutate(pred_race = predict(fit_race, type = "response"))
+
+auc(roc(compas$two_year_recid, compas$pred_race))
+
+compas %>%
+  filter(race %in% c("African-American", "Caucasian")) %>%
+  mutate(flag = as.integer(pred_race >= 0.5)) %>%
+  group_by(race) %>%
+  summarize(fpr = sum(flag == 1 & two_year_recid == 0) / sum(two_year_recid == 0))
+```
+
+::: {.callout-tip}
+## Checkpoint 8
+AUC stays at **0.73**. FPR: **0.33** for Black defendants, **0.12** for white defendants. The gap gets slightly wider, but not by much.
+:::
+
+Leaving race out bought very little, because priors and age were already carrying it.
+
+> ✏️ **Try it yourself:** refit the race-blind model **without `priors_count`**. Does the gap close? What happens to the AUC? (You should see about 0.65, with FPR 0.31 vs. 0.21.)
+
+```{r}
+fit_no_priors <- glm(
+  two_year_recid ~ age + male + felony + juv_total,
+  family = binomial,
+  data = compas
+)
+
+compas <- compas %>%
+  mutate(pred_no_priors = predict(fit_no_priors, type = "response"))
+
+auc(roc(compas$two_year_recid, compas$pred_no_priors))
+
+compas %>%
+  filter(race %in% c("African-American", "Caucasian")) %>%
+  mutate(flag_no_priors = as.integer(pred_no_priors >= 0.5)) %>%
+  group_by(race) %>%
+  summarize(
+    fpr = sum(flag_no_priors == 1 & two_year_recid == 0) /
+      sum(two_year_recid == 0),
+    accuracy = mean(flag_no_priors == two_year_recid),
+    .groups = "drop"
+  )
+```
+
+::: {.callout-note}
+## My answer
+Removing `priors_count` narrows the false-positive-rate gap from about **15 percentage points** (`0.29` vs. `0.14`) to about **10 percentage points** (`0.31` vs. `0.21`). However, the AUC falls from **0.73** to about **0.65**, so the model becomes substantially worse at ranking who will be rearrested. The gap gets smaller, but it does not disappear: the other predictors still contain information associated with race, and the two groups have different observed base rates.
+:::
+
+---
+
+## Step 9: Is the model calibrated?
+
+Group people by their predicted probability. Within each group, what share were actually rearrested, by race?
+
+```{r}
+compas %>%
+  filter(race %in% c("African-American", "Caucasian")) %>%
+  mutate(pred_bin = cut(pred, breaks = c(0, .3, .4, .5, .6, .7, 1), right = FALSE)) %>%
+  group_by(pred_bin, race) %>%
+  summarize(n = n(), actual_rate = mean(two_year_recid), .groups = "drop") %>%
+  select(-n) %>%
+  pivot_wider(names_from = race, values_from = actual_rate)
+```
+
+::: {.callout-tip}
+## Checkpoint 9
+For the middle bins, the two columns are close. For example, [0.4, 0.5) is **0.44** vs. **0.42**, and [0.6, 0.7) is **0.73** vs. **0.76**.
+:::
+
+The same predicted probability means about the same chance of rearrest for both groups. **And** the error rates in Step 7 were very different.
+
+---
+
+## Conclusion
+
+Leaving race out of a model does not automatically make the model race-blind. Variables such as prior arrests and age can carry information associated with race because they reflect social and policing patterns. This model can be similarly calibrated for Black and white defendants while still producing unequal false-positive and false-negative rates. Removing a proxy such as `priors_count` reduces part of the disparity, but it also lowers predictive performance and does not eliminate the gap. Fairness therefore cannot be judged only from the model formula or from one metric such as AUC.
+
+---
+
+ok now go forth and do the assignment!
