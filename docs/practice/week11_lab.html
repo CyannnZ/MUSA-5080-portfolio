@@ -248,59 +248,59 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="cell-output cell-output-stdout">
 <pre><code>Rows: 7,214
 Columns: 53
-$ id                      &lt;dbl&gt; 1, 3, 4, 5, 6, 7, 8, 9, 10, 13, 14, 15, 16, 18~
-$ name                    &lt;chr&gt; "miguel hernandez", "kevon dixon", "ed philo",~
-$ first                   &lt;chr&gt; "miguel", "kevon", "ed", "marcu", "bouthy", "m~
-$ last                    &lt;chr&gt; "hernandez", "dixon", "philo", "brown", "pierr~
-$ compas_screening_date   &lt;date&gt; 2013-08-14, 2013-01-27, 2013-04-14, 2013-01-1~
-$ sex                     &lt;chr&gt; "Male", "Male", "Male", "Male", "Male", "Male"~
-$ dob                     &lt;date&gt; 1947-04-18, 1982-01-22, 1991-05-14, 1993-01-2~
-$ age                     &lt;dbl&gt; 69, 34, 24, 23, 43, 44, 41, 43, 39, 21, 27, 23~
-$ age_cat                 &lt;chr&gt; "Greater than 45", "25 - 45", "Less than 25", ~
-$ race                    &lt;chr&gt; "Other", "African-American", "African-American~
-$ juv_fel_count           &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0~
-$ decile_score            &lt;dbl&gt; 1, 3, 4, 8, 1, 1, 6, 4, 1, 3, 4, 6, 1, 4, 1, 3~
-$ juv_misd_count          &lt;dbl&gt; 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0~
-$ juv_other_count         &lt;dbl&gt; 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0~
-$ priors_count            &lt;dbl&gt; 0, 0, 4, 1, 2, 0, 14, 3, 0, 1, 0, 3, 0, 0, 1, ~
-$ days_b_screening_arrest &lt;dbl&gt; -1, -1, -1, NA, NA, 0, -1, -1, -1, 428, -1, 0,~
-$ c_jail_in               &lt;dttm&gt; 2013-08-13 06:03:42, 2013-01-26 03:45:27, 201~
-$ c_jail_out              &lt;dttm&gt; 2013-08-14 05:41:20, 2013-02-05 05:36:53, 201~
-$ c_case_number           &lt;chr&gt; "13011352CF10A", "13001275CF10A", "13005330CF1~
-$ c_offense_date          &lt;date&gt; 2013-08-13, 2013-01-26, 2013-04-13, 2013-01-1~
-$ c_arrest_date           &lt;date&gt; NA, NA, NA, NA, 2013-01-09, NA, NA, 2013-08-2~
-$ c_days_from_compas      &lt;dbl&gt; 1, 1, 1, 1, 76, 0, 1, 1, 1, 308, 1, 0, 0, 1, 4~
-$ c_charge_degree         &lt;chr&gt; "F", "F", "F", "F", "F", "M", "F", "F", "M", "~
-$ c_charge_desc           &lt;chr&gt; "Aggravated Assault w/Firearm", "Felony Batter~
-$ is_recid                &lt;dbl&gt; 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1~
-$ r_case_number           &lt;chr&gt; NA, "13009779CF10A", "13011511MM10A", NA, NA, ~
-$ r_charge_degree         &lt;chr&gt; NA, "(F3)", "(M1)", NA, NA, NA, "(F2)", NA, NA~
-$ r_days_from_arrest      &lt;dbl&gt; NA, NA, 0, NA, NA, NA, 0, NA, NA, 0, NA, NA, N~
-$ r_offense_date          &lt;date&gt; NA, 2013-07-05, 2013-06-16, NA, NA, NA, 2014-~
-$ r_charge_desc           &lt;chr&gt; NA, "Felony Battery (Dom Strang)", "Driving Un~
-$ r_jail_in               &lt;date&gt; NA, NA, 2013-06-16, NA, NA, NA, 2014-03-31, N~
-$ r_jail_out              &lt;date&gt; NA, NA, 2013-06-16, NA, NA, NA, 2014-04-18, N~
-$ violent_recid           &lt;lgl&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
-$ is_violent_recid        &lt;dbl&gt; 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0~
-$ vr_case_number          &lt;chr&gt; NA, "13009779CF10A", NA, NA, NA, NA, NA, NA, N~
-$ vr_charge_degree        &lt;chr&gt; NA, "(F3)", NA, NA, NA, NA, NA, NA, NA, "(F2)"~
-$ vr_offense_date         &lt;date&gt; NA, 2013-07-05, NA, NA, NA, NA, NA, NA, NA, 2~
-$ vr_charge_desc          &lt;chr&gt; NA, "Felony Battery (Dom Strang)", NA, NA, NA,~
-$ type_of_assessment      &lt;chr&gt; "Risk of Recidivism", "Risk of Recidivism", "R~
-$ decile_score.1          &lt;dbl&gt; 1, 3, 4, 8, 1, 1, 6, 4, 1, 3, 4, 6, 1, 4, 1, 3~
-$ score_text              &lt;chr&gt; "Low", "Low", "Low", "High", "Low", "Low", "Me~
-$ screening_date          &lt;date&gt; 2013-08-14, 2013-01-27, 2013-04-14, 2013-01-1~
-$ v_type_of_assessment    &lt;chr&gt; "Risk of Violence", "Risk of Violence", "Risk ~
-$ v_decile_score          &lt;dbl&gt; 1, 1, 3, 6, 1, 1, 2, 3, 1, 5, 4, 4, 1, 2, 1, 2~
-$ v_score_text            &lt;chr&gt; "Low", "Low", "Low", "Medium", "Low", "Low", "~
-$ v_screening_date        &lt;date&gt; 2013-08-14, 2013-01-27, 2013-04-14, 2013-01-1~
-$ in_custody              &lt;date&gt; 2014-07-07, 2013-01-26, 2013-06-16, NA, NA, 2~
-$ out_custody             &lt;date&gt; 2014-07-14, 2013-02-05, 2013-06-16, NA, NA, 2~
-$ priors_count.1          &lt;dbl&gt; 0, 0, 4, 1, 2, 0, 14, 3, 0, 1, 0, 3, 0, 0, 1, ~
-$ start                   &lt;dbl&gt; 0, 9, 0, 0, 0, 1, 5, 0, 2, 0, 0, 4, 1, 0, 0, 0~
-$ end                     &lt;dbl&gt; 327, 159, 63, 1174, 1102, 853, 40, 265, 747, 4~
-$ event                   &lt;dbl&gt; 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1~
-$ two_year_recid          &lt;dbl&gt; 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1~</code></pre>
+$ id                      &lt;dbl&gt; 1, 3, 4, 5, 6, 7, 8, 9, 10, 13, 14, 15, 16, 18…
+$ name                    &lt;chr&gt; "miguel hernandez", "kevon dixon", "ed philo",…
+$ first                   &lt;chr&gt; "miguel", "kevon", "ed", "marcu", "bouthy", "m…
+$ last                    &lt;chr&gt; "hernandez", "dixon", "philo", "brown", "pierr…
+$ compas_screening_date   &lt;date&gt; 2013-08-14, 2013-01-27, 2013-04-14, 2013-01-1…
+$ sex                     &lt;chr&gt; "Male", "Male", "Male", "Male", "Male", "Male"…
+$ dob                     &lt;date&gt; 1947-04-18, 1982-01-22, 1991-05-14, 1993-01-2…
+$ age                     &lt;dbl&gt; 69, 34, 24, 23, 43, 44, 41, 43, 39, 21, 27, 23…
+$ age_cat                 &lt;chr&gt; "Greater than 45", "25 - 45", "Less than 25", …
+$ race                    &lt;chr&gt; "Other", "African-American", "African-American…
+$ juv_fel_count           &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0…
+$ decile_score            &lt;dbl&gt; 1, 3, 4, 8, 1, 1, 6, 4, 1, 3, 4, 6, 1, 4, 1, 3…
+$ juv_misd_count          &lt;dbl&gt; 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0…
+$ juv_other_count         &lt;dbl&gt; 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0…
+$ priors_count            &lt;dbl&gt; 0, 0, 4, 1, 2, 0, 14, 3, 0, 1, 0, 3, 0, 0, 1, …
+$ days_b_screening_arrest &lt;dbl&gt; -1, -1, -1, NA, NA, 0, -1, -1, -1, 428, -1, 0,…
+$ c_jail_in               &lt;dttm&gt; 2013-08-13 06:03:42, 2013-01-26 03:45:27, 201…
+$ c_jail_out              &lt;dttm&gt; 2013-08-14 05:41:20, 2013-02-05 05:36:53, 201…
+$ c_case_number           &lt;chr&gt; "13011352CF10A", "13001275CF10A", "13005330CF1…
+$ c_offense_date          &lt;date&gt; 2013-08-13, 2013-01-26, 2013-04-13, 2013-01-1…
+$ c_arrest_date           &lt;date&gt; NA, NA, NA, NA, 2013-01-09, NA, NA, 2013-08-2…
+$ c_days_from_compas      &lt;dbl&gt; 1, 1, 1, 1, 76, 0, 1, 1, 1, 308, 1, 0, 0, 1, 4…
+$ c_charge_degree         &lt;chr&gt; "F", "F", "F", "F", "F", "M", "F", "F", "M", "…
+$ c_charge_desc           &lt;chr&gt; "Aggravated Assault w/Firearm", "Felony Batter…
+$ is_recid                &lt;dbl&gt; 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1…
+$ r_case_number           &lt;chr&gt; NA, "13009779CF10A", "13011511MM10A", NA, NA, …
+$ r_charge_degree         &lt;chr&gt; NA, "(F3)", "(M1)", NA, NA, NA, "(F2)", NA, NA…
+$ r_days_from_arrest      &lt;dbl&gt; NA, NA, 0, NA, NA, NA, 0, NA, NA, 0, NA, NA, N…
+$ r_offense_date          &lt;date&gt; NA, 2013-07-05, 2013-06-16, NA, NA, NA, 2014-…
+$ r_charge_desc           &lt;chr&gt; NA, "Felony Battery (Dom Strang)", "Driving Un…
+$ r_jail_in               &lt;date&gt; NA, NA, 2013-06-16, NA, NA, NA, 2014-03-31, N…
+$ r_jail_out              &lt;date&gt; NA, NA, 2013-06-16, NA, NA, NA, 2014-04-18, N…
+$ violent_recid           &lt;lgl&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…
+$ is_violent_recid        &lt;dbl&gt; 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0…
+$ vr_case_number          &lt;chr&gt; NA, "13009779CF10A", NA, NA, NA, NA, NA, NA, N…
+$ vr_charge_degree        &lt;chr&gt; NA, "(F3)", NA, NA, NA, NA, NA, NA, NA, "(F2)"…
+$ vr_offense_date         &lt;date&gt; NA, 2013-07-05, NA, NA, NA, NA, NA, NA, NA, 2…
+$ vr_charge_desc          &lt;chr&gt; NA, "Felony Battery (Dom Strang)", NA, NA, NA,…
+$ type_of_assessment      &lt;chr&gt; "Risk of Recidivism", "Risk of Recidivism", "R…
+$ decile_score.1          &lt;dbl&gt; 1, 3, 4, 8, 1, 1, 6, 4, 1, 3, 4, 6, 1, 4, 1, 3…
+$ score_text              &lt;chr&gt; "Low", "Low", "Low", "High", "Low", "Low", "Me…
+$ screening_date          &lt;date&gt; 2013-08-14, 2013-01-27, 2013-04-14, 2013-01-1…
+$ v_type_of_assessment    &lt;chr&gt; "Risk of Violence", "Risk of Violence", "Risk …
+$ v_decile_score          &lt;dbl&gt; 1, 1, 3, 6, 1, 1, 2, 3, 1, 5, 4, 4, 1, 2, 1, 2…
+$ v_score_text            &lt;chr&gt; "Low", "Low", "Low", "Medium", "Low", "Low", "…
+$ v_screening_date        &lt;date&gt; 2013-08-14, 2013-01-27, 2013-04-14, 2013-01-1…
+$ in_custody              &lt;date&gt; 2014-07-07, 2013-01-26, 2013-06-16, NA, NA, 2…
+$ out_custody             &lt;date&gt; 2014-07-14, 2013-02-05, 2013-06-16, NA, NA, 2…
+$ priors_count.1          &lt;dbl&gt; 0, 0, 4, 1, 2, 0, 14, 3, 0, 1, 0, 3, 0, 0, 1, …
+$ start                   &lt;dbl&gt; 0, 9, 0, 0, 0, 1, 5, 0, 2, 0, 0, 4, 1, 0, 0, 0…
+$ end                     &lt;dbl&gt; 327, 159, 63, 1174, 1102, 853, 40, 265, 747, 4…
+$ event                   &lt;dbl&gt; 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1…
+$ two_year_recid          &lt;dbl&gt; 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1…</code></pre>
 </div>
 </div>
 <hr>
@@ -478,7 +478,7 @@ Number of Fisher Scoring iterations: 4</code></pre>
 <span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(age, priors_count, male, felony, two_year_recid, pred) <span class="sc">%&gt;%</span></span>
 <span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">10</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 10 x 6
+<pre><code># A tibble: 10 × 6
      age priors_count  male felony two_year_recid  pred
    &lt;dbl&gt;        &lt;dbl&gt; &lt;int&gt;  &lt;int&gt;          &lt;dbl&gt; &lt;dbl&gt;
  1    69            0     1      1              0 0.110
@@ -527,7 +527,7 @@ predicted    0    1
 <span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">accuracy    =</span> <span class="fu">mean</span>(flag <span class="sc">==</span> two_year_recid)</span>
 <span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 1 x 3
+<pre><code># A tibble: 1 × 3
   sensitivity specificity accuracy
         &lt;dbl&gt;       &lt;dbl&gt;    &lt;dbl&gt;
 1       0.552       0.788    0.681</code></pre>
@@ -567,7 +567,7 @@ predicted    0    1
 <span id="cb19-15"><a href="#cb19-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rates_at</span>(compas, <span class="fl">0.7</span>)</span>
 <span id="cb19-16"><a href="#cb19-16" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 3 x 4
+<pre><code># A tibble: 3 × 4
   threshold sensitivity specificity accuracy
       &lt;dbl&gt;       &lt;dbl&gt;       &lt;dbl&gt;    &lt;dbl&gt;
 1       0.3       0.900       0.311    0.579
@@ -700,7 +700,7 @@ predicted    0    1
 <span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">accuracy  =</span> <span class="fu">mean</span>(flag <span class="sc">==</span> two_year_recid)</span>
 <span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 2 x 6
+<pre><code># A tibble: 2 × 6
   race                 n base_rate   fpr   fnr accuracy
   &lt;chr&gt;            &lt;int&gt;     &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt;
 1 African-American  3175     0.523 0.295 0.344    0.680
@@ -763,7 +763,7 @@ predicted    0    1
 <span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">mean_age    =</span> <span class="fu">mean</span>(age)</span>
 <span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 2 x 3
+<pre><code># A tibble: 2 × 3
   race             mean_priors mean_age
   &lt;chr&gt;                  &lt;dbl&gt;    &lt;dbl&gt;
 1 African-American        4.24     32.4
@@ -807,7 +807,7 @@ predicted    0    1
 <span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(race) <span class="sc">%&gt;%</span></span>
 <span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">fpr =</span> <span class="fu">sum</span>(flag <span class="sc">==</span> <span class="dv">1</span> <span class="sc">&amp;</span> two_year_recid <span class="sc">==</span> <span class="dv">0</span>) <span class="sc">/</span> <span class="fu">sum</span>(two_year_recid <span class="sc">==</span> <span class="dv">0</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 2 x 2
+<pre><code># A tibble: 2 × 2
   race               fpr
   &lt;chr&gt;            &lt;dbl&gt;
 1 African-American 0.329
@@ -856,7 +856,7 @@ predicted    0    1
 <span id="cb37-9"><a href="#cb37-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">.groups =</span> <span class="st">"drop"</span></span>
 <span id="cb37-10"><a href="#cb37-10" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 2 x 3
+<pre><code># A tibble: 2 × 3
   race               fpr accuracy
   &lt;chr&gt;            &lt;dbl&gt;    &lt;dbl&gt;
 1 African-American 0.313    0.608
@@ -891,7 +891,7 @@ predicted    0    1
 <span id="cb39-6"><a href="#cb39-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>n) <span class="sc">%&gt;%</span></span>
 <span id="cb39-7"><a href="#cb39-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> race, <span class="at">values_from =</span> actual_rate)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 6 x 3
+<pre><code># A tibble: 6 × 3
   pred_bin  `African-American` Caucasian
   &lt;fct&gt;                  &lt;dbl&gt;     &lt;dbl&gt;
 1 [0,0.3)                0.237     0.213
@@ -1777,7 +1777,7 @@ predicted    0    1
 <span id="cb41-428"><a href="#cb41-428" aria-hidden="true" tabindex="-1"></a>For the middle bins, the two columns are close. For example, [0.4, 0.5) is **0.44** vs. **0.42**, and [0.6, 0.7) is **0.73** vs. **0.76**.</span>
 <span id="cb41-429"><a href="#cb41-429" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb41-430"><a href="#cb41-430" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb41-431"><a href="#cb41-431" aria-hidden="true" tabindex="-1"></a>The same predicted probability means about the same chance of rearrest for both groups. **And** the error rates in Step 7 were very different. </span>
+<span id="cb41-431"><a href="#cb41-431" aria-hidden="true" tabindex="-1"></a>The same predicted probability means about the same chance of rearrest for both groups. **And** the error rates in Step 7 were very different.</span>
 <span id="cb41-432"><a href="#cb41-432" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb41-433"><a href="#cb41-433" aria-hidden="true" tabindex="-1"></a>---</span>
 <span id="cb41-434"><a href="#cb41-434" aria-hidden="true" tabindex="-1"></a></span>
