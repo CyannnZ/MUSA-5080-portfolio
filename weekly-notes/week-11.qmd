@@ -1,0 +1,182 @@
+---
+title: "Week 11: ROC Curves, AUC, and Fair Risk Prediction"
+description: "Classification thresholds, ROC curves, AUC, and group differences in rearrest prediction."
+date: 2026-11-13
+---
+
+## What We Did
+
+We examined how a classification threshold changes sensitivity, specificity, and the kinds of errors a model makes. We used ROC curves and AUC to evaluate how well scores rank positive cases above negative cases. In the COMPAS lab, we used ProPublica's data to predict recorded rearrest within two years and compared performance across Black and white defendants.
+
+## Key Concepts
+
+### 1. Sensitivity, specificity, and the threshold
+
+Classify an observation as positive when its score is at or above a threshold $t$. The confusion matrix then gives four conditional rates:
+
+| Rate | Formula | Interpretation |
+|---|---|---|
+| Sensitivity or true positive rate (TPR) | $TP/(TP+FN)$ | Fraction of actual positives flagged |
+| Specificity or true negative rate (TNR) | $TN/(TN+FP)$ | Fraction of actual negatives cleared |
+| False positive rate (FPR) | $FP/(FP+TN)=1-\operatorname{Specificity}$ | Fraction of actual negatives flagged |
+| False negative rate (FNR) | $FN/(FN+TP)=1-\operatorname{Sensitivity}$ | Fraction of actual positives missed |
+
+For a fixed set of scores and labels, lowering $t$ can only add to the set of flagged observations. Sensitivity and FPR can rise or stay the same. Raising $t$ can only remove flagged observations, so specificity can rise or stay the same.
+
+The Week 11 lab notes report these operating points for the logistic model:
+
+| Threshold | Sensitivity | Specificity |
+|---:|---:|---:|
+| 0.30 | 0.90 | 0.31 |
+| 0.50 | 0.55 | 0.79 |
+| 0.70 | 0.20 | 0.96 |
+
+### 2. What accuracy summarizes
+
+Accuracy counts the fraction of predictions that are correct. The same accuracy can represent different combinations of false positives and false negatives.
+
+### 3. ROC curves
+
+The receiver operating characteristic (ROC) curve traces the trade-off between detection and false alarms as the threshold changes. The horizontal axis is FPR and the vertical axis is TPR. Each point gives the corresponding rates at a specific threshold.
+
+```{r}
+#| label: fig-roc-curves
+#| echo: false
+#| fig-width: 5
+#| fig-height: 5.8
+#| fig-alt: "ROC curves for random ranking, a model with AUC 0.73, and a model with AUC 0.95. The plot marks flag nobody, flag everybody, and perfect classification."
+
+fpr <- seq(0, 1, length.out = 501)
+illustrative_roc <- function(auc) {
+  pnorm(qnorm(fpr) + sqrt(2) * qnorm(auc))
+}
+
+colors <- c("#737373", "#B43D30", "#3267A8")
+ticks <- seq(0, 1, by = 0.25)
+par(mar = c(7.5, 4.5, 3, 1), las = 1)
+plot(
+  fpr, fpr, type = "n", axes = FALSE, asp = 1,
+  xlim = c(0, 1), ylim = c(0, 1),
+  xlab = "False positive rate (1 - specificity)",
+  ylab = "True positive rate (sensitivity)", main = "Reading an ROC curve"
+)
+abline(h = ticks, v = ticks, col = "#E5E5E5")
+axis(1, at = ticks, labels = sprintf("%.2f", ticks), tick = FALSE)
+axis(2, at = ticks, labels = sprintf("%.2f", ticks), tick = FALSE)
+lines(fpr, fpr, col = colors[1], lty = 2, lwd = 2)
+lines(fpr, illustrative_roc(0.73), col = colors[2], lwd = 2)
+lines(fpr, illustrative_roc(0.95), col = colors[3], lwd = 2)
+
+points(c(0, 0, 1), c(0, 1, 1), pch = 19)
+text(0.026, 0.035, "(0, 0) Flag nobody", adj = 0, cex = 0.76)
+text(0, 1.045, "(0, 1) Perfect", adj = 0, cex = 0.76, xpd = TRUE)
+text(1, 1.045, "(1, 1) Flag everybody", adj = 1, cex = 0.76, xpd = TRUE)
+legend(
+  "bottom", inset = c(0, -0.39), xpd = NA, bty = "n", cex = 0.8,
+  legend = c("Random ranking (AUC 0.50)", "Illustrative model (AUC 0.73)",
+             "Strong illustrative model (AUC 0.95)"),
+  col = colors, lty = c(2, 1, 1), lwd = 2
+)
+```
+
+| ROC location | Interpretation |
+|---|---|
+| $(0,0)$ | The rule flags nobody. |
+| $(1,1)$ | The rule flags everybody. |
+| $(0,1)$ | The rule catches every positive with zero false positives. |
+| Diagonal | A ranking with no discriminatory power is expected to follow this line. |
+
+### 4. Area under the ROC curve
+
+AUC measures how well scores rank positives above negatives. An AUC of 0.50 corresponds to chance ranking and 1.00 corresponds to perfect separation.
+
+| COMPAS lab score | Reported AUC |
+|---|---:|
+| Logistic model with age, prior count, sex, felony charge, and juvenile record | 0.73 |
+| COMPAS decile score | 0.71 |
+
+When AUC looks unusually high, check for leakage and evaluate the model on held-out data. AUC summarizes ranking across thresholds. Error costs, the operating threshold, and performance by group each require their own assessment.
+
+### 5. Choosing a threshold
+
+Two common ROC-based heuristics are choosing the point nearest $(0,1)$ and maximizing **Youden's $J$**:
+
+$$
+J=\operatorname{Sensitivity}+\operatorname{Specificity}-1
+=\operatorname{TPR}-\operatorname{FPR}.
+$$
+
+Choose a threshold based on the consequences of errors. A higher threshold can reduce unnecessary restrictions in a supervision decision. A lower threshold can reduce missed cases when offering voluntary support.
+
+### 6. Race, proxies, and group error rates
+
+At threshold 0.50, the logistic model excluded race as a predictor. The reference notes report these results, rounded to two decimal places:
+
+| Group | Observed rearrest base rate | FPR | FNR | Accuracy |
+|---|---:|---:|---:|---:|
+| Black defendants | 0.52 | 0.29 | 0.34 | 0.68 |
+| White defendants | 0.39 | 0.14 | 0.60 | 0.68 |
+
+Although reported accuracy was the same, Black defendants had a higher FPR and white defendants had a higher FNR. Average prior counts were 4.2 for Black defendants and 2.3 for white defendants, and average ages were 32 and 38, respectively. These variables can act as proxies for group membership. Prior records also reflect differences in policing and enforcement.
+
+| Experiment | Reported AUC | FPR for Black defendants | FPR for white defendants |
+|---|---:|---:|---:|
+| Model excluding race | 0.73 | 0.29 | 0.14 |
+| Add race | 0.73 | 0.33 | 0.12 |
+| Remove `priors_count` | 0.65 | 0.31 | 0.21 |
+
+### 7. Calibration and error-rate parity
+
+Calibration compares predicted probabilities with observed frequencies. In the $[0.40,0.50)$ score bin, the two groups had observed rearrest rates of 0.44 and 0.42. Error-rate parity compares FPR and FNR across groups at a decision threshold. With different base rates, these fairness criteria can pull in different directions.
+
+### 8. Coding Notes in R
+
+The workflow below assumes a fitted logistic model and an evaluation data frame containing an observed binary `outcome`, a COMPAS `decile_score`, and a `group` column. Use `type = "response"` to obtain probabilities from a logistic model. On the link scale, prediction gives log-odds.
+
+~~~r
+library(dplyr)
+library(ggplot2)
+library(purrr)
+library(pROC)
+
+eval_data$pred <- predict(model, newdata = eval_data, type = "response")
+
+rates_at <- function(data, cutoff) {
+  data |>
+    mutate(flag = as.integer(pred >= cutoff)) |>
+    summarize(
+      threshold = cutoff,
+      sensitivity = sum(flag == 1 & outcome == 1) / sum(outcome == 1),
+      specificity = sum(flag == 0 & outcome == 0) / sum(outcome == 0),
+      accuracy = mean(flag == outcome)
+    )
+}
+
+map_dfr(seq(0.30, 0.80, by = 0.05), ~ rates_at(eval_data, .x))
+~~~
+
+Create the ROC object from the observed labels and continuous prediction scores. `legacy.axes = TRUE` displays the horizontal axis as FPR from 0 to 1.
+
+~~~r
+model_roc <- roc(eval_data$outcome, eval_data$pred)
+compas_roc <- roc(eval_data$outcome, eval_data$decile_score)
+
+auc(model_roc)
+
+ggroc(list(Logistic = model_roc, COMPAS = compas_roc), legacy.axes = TRUE) +
+  geom_abline(linetype = "dashed")
+~~~
+
+For a threshold-specific group comparison, calculate each error rate within its actual outcome class.
+
+~~~r
+eval_data |>
+  mutate(flag = as.integer(pred >= 0.50)) |>
+  group_by(group) |>
+  summarize(
+    fpr = sum(flag == 1 & outcome == 0) / sum(outcome == 0),
+    fnr = sum(flag == 0 & outcome == 1) / sum(outcome == 1)
+  )
+~~~
+
+When importing a COMPAS CSV with duplicate column names, `readr::read_csv(..., name_repair = make.unique)` can give each column a distinct name.
